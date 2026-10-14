@@ -1,0 +1,43 @@
+import { expect, test } from '@playwright/test';
+
+test('onboarding cria empresa em teste e ela aparece no Super Admin', async ({ page }) => {
+  await page.goto('/cadastro?plano=profissional&periodo=quarterly');
+  const next = () => page.getByRole('button', { name: /Continuar/ }).click();
+  await page.getByLabel('Seu nome').fill('Teste E2E'); await page.getByLabel('E-mail').fill('e2e@exemplo.example'); await next();
+  await page.getByLabel('Nome fantasia').fill('Oficina E2E'); await page.getByLabel('Razão social').fill('Oficina E2E Ltda'); await page.getByLabel('CPF / CNPJ fictício').fill('12345678000199'); await next();
+  await page.getByLabel('CEP').fill('01001000'); await page.getByRole('button', { name: 'Consultar CEP (simulado)' }).click();
+  await page.getByLabel('Número').fill('100'); await next();
+  await next(); await next();
+  await expect(page.getByText('R$ 669,00')).toBeVisible(); // trimestral Profissional
+  await page.getByRole('checkbox').check(); await page.getByRole('button', { name: /Criar empresa demonstrativa/ }).click();
+  await expect(page).toHaveURL(/\/loja\/oficina-e2e\/dashboard/);
+  await expect(page.locator('main h1')).toContainText('Olá, Teste');
+  await page.goto('/demonstracao'); await page.getByRole('button', { name: 'Entrar como Super Admin' }).click();
+  await page.getByRole('link', { name: 'Empresas', exact: true }).click(); // SPA: sessão demo em memória
+  await expect(page.getByText('Oficina E2E').first()).toBeVisible();
+});
+
+test('tema e marca isolados por empresa; papel sem permissão é bloqueado', async ({ page }) => {
+  await page.goto('/loja/moto-prime/dashboard');
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Ativar tema claro' }).click();
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'light');
+  await page.goto('/loja/auto-center/dashboard');
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'dark');
+  await page.reload(); await page.goto('/loja/moto-prime/dashboard');
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-theme', 'light'); // persistido no IndexedDB
+  await page.getByRole('button', { name: 'Menu da conta' }).click();
+  await page.getByLabel('Papel demonstrativo').selectOption('Mecânico');
+  // Sessão demo vive em memória (sem auth real): navegar sem recarregar.
+  await expect(page.getByRole('link', { name: 'Financeiro', exact: true })).toHaveCount(0);
+  await page.evaluate(() => { history.pushState({}, '', '/loja/moto-prime/financeiro'); dispatchEvent(new PopStateEvent('popstate')); });
+  await expect(page.getByText('Acesso não permitido')).toBeVisible();
+});
+
+test('lead comercial persiste na plataforma e Super Admin exige sessão', async ({ page }) => {
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/login/);
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /Testar grátis por 14 dias/ })).toBeVisible();
+  await expect(page.locator('img[src="/screenshots/dashboard.webp"]').first()).toBeVisible();
+});

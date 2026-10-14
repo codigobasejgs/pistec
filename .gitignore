@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log
+.claude/
+# Mídia bruta e referências de trabalho (assets otimizados ficam em public/)
+*.mp4
+references/
