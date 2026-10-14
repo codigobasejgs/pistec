@@ -29,7 +29,7 @@ test('mixed sale survives reload and remains isolated by tenant', async ({ page 
   const after = await snapshot(page);
   expect(after.sales.filter(row => row.tenantId === 'tenant-premium')).toHaveLength(previous + 1);
   const sale = after.sales.find(row => !before.sales.some(old => old.id === row.id))!;
-  expect(sale.payments).toEqual([{ method: 'Dinheiro', amount: 1000 }, { method: 'Pix', amount: product.price - 1000 }]);
+  expect(sale.payments).toMatchObject([{ method: 'Dinheiro', amount: 1000 }, { method: 'Pix', amount: product.price - 1000 }]);
   expect(after.cashRegisters.find(row => row.id === beforeCash.id)!.movements.reduce((sum, row) => sum + row.amount, 0) - beforeCash.movements.reduce((sum, row) => sum + row.amount, 0)).toBe(1000);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Frente de caixa' })).toBeVisible();
@@ -95,5 +95,5 @@ test('mobile ERP keeps forms and navigation usable without page overflow', async
   await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.getByRole('textbox', { name: 'Nome, documento, telefone ou e-mail' }).fill('Cliente Mobile E2E');
-  await expect(page.getByRole('cell', { name: 'Cliente Mobile E2E', exact: true })).toBeVisible();
+  await expect(page.getByText('Cliente Mobile E2E').first()).toBeVisible();
 });

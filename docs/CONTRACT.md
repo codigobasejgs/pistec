@@ -1,10 +1,36 @@
-# Contrato de implementação
-Frontend React+TS estrito, CSS próprio, Radix Dialog, Lucide e Recharts. Sem backend. Não publicar remotamente.
+# Contrato de implementação — PISTEC 2.0
 
-Tipos compartilhados: src/types.ts (não alterar sem comunicar).
-Store src/store.tsx exporta useDemo(): {state: DemoState; session: Session; setSession(next: Session): void; mutate(action: (draft: DemoState) => void): Promise<void>; reset(): Promise<void>; loading: boolean; error: string; failNext: boolean; setFailNext(value: boolean): void}. Provider DemoProvider. mutate clona estado, persiste atomicamente IndexedDB antes de publicar; exceções rejeitam Promise.
-Domínio src/domain.ts: completeSale(state,input): Sale; cancelSale(state, tenantId, saleId): void; moveStock(state, tenantId, branchId, productId, quantity, type, reference): void; transferStock(state,tenantId,from,to,productId,quantity): void; transitionRecord(state,tenantId,id,status): void; convertRecord(state,tenantId,id,targetKind): void; openCash(state,tenantId,branchId,opening): void; closeCash(state,tenantId,id,counted): void; receivePurchase(state,tenantId,id): void; saveProduct(state,product): void; createTenant(state,input: Partial<Tenant>): Tenant. Export can(role: Role,module: string,action?: string): boolean. Validação nos limites; dinheiro inteiro em centavos; operações idempotentes.
-Helpers src/lib.ts: money(cents), date(iso), uid(), today(), exportCsv(name, rows: Record<string,unknown>[]), parseMoney(value:string): number.
-Componentes src/ui.tsx: PageHeader({title,subtitle?,children?}), Panel({title?,children,className?}), Stat({label,value,hint?,icon?,tone?}), Badge({children}), Modal({title,open,onClose,children}), Field({label,children}), Empty({text}), DataTable({columns: {key:string,label:string,render?:(row:any)=>ReactNode}[], rows:any[], onRow?}), useNotice(): (message:string)=>void. Evitar any em páginas; DataTable será genérico. Confirmar ações destrutivas via window.confirm permitido inicialmente. Componentes nativos input/select/button estilizados globalmente; botões .btn .primary .danger .ghost; .grid .grid-2 .grid-3 .grid-4 .stack .toolbar .muted .form-grid .table-wrap .page .card .badge .tabs.
-Páginas recebem tenant pelo session. Layout valida slug e sincroniza sessão antes de renderizar Outlet. Props em páginas: nenhuma. Paths /loja/:tenantSlug/{module}. Módulo atual via useParams().module quando rota genérica. Export default.
-Responsabilidades: agente domínio: seed.ts/domain.ts/store.tsx/domain.test.ts e contratos billing; agente ERP: src/features/erp/* (páginas Pos, Products, Records, Inventory, Finance, Reports, WhatsApp); agente público/admin: src/features/public/* e src/features/admin/*; principal: layouts/router/ui/dashboard/settings/styles/config.
+Stack inalterada: React 19 + TS estrito, CSS próprio (tokens em `src/styles.css`), Radix Dialog, Lucide, Recharts, Dexie. Nova dependência: `read-excel-file` (somente leitura XLSX, no navegador, lazy import). Sem backend, sem rede.
+
+Tipos compartilhados: `src/types.ts` (fonte única). Dinheiro sempre inteiro em centavos.
+
+## Store (`src/store.tsx`)
+`useDemo()` → `{ state, session, setSession, mutate, reset, loading, initialized, error, failNext, setFailNext, logout }`.
+- `mutate(action)` síncrono, serializado, persiste antes de publicar (inalterado).
+- **Versão de dados = 2.** `migrate(raw): DemoState` exportada de `src/migrations.ts` — v1→v2 adiciona `settlements` (entradas `paid` antigas viram uma baixa integral), `change: 0` em vendas, `coupons/couponRedemptions: []`, `branding.radius: 'default'`. Migra em transação; falha não sobrescreve snapshot.
+- **Sessão demo persistida** em `localStorage['pistec-demo-session']` (só tenantId/branchId/role/name/admin). Restaurada no boot, validada contra o estado (tenant/filial/papel); inválida → `INITIAL_SESSION`. `logout()` limpa a chave. Isso NÃO é autenticação.
+
+## Domínio (`src/domain.ts`) — assinaturas existentes preservadas
+- `completeSale(state, input)`: `input.payments[].amount` = valor ENTREGUE. Somente 'Dinheiro' admite troco. Aplica não-dinheiro primeiro; soma não-dinheiro > total → erro; total entregue < total → erro "Pagamento insuficiente". Grava `sale.payments[].amount` = aplicado, `tendered` no dinheiro, `sale.change`. Caixa recebe só dinheiro líquido (entregue − troco). Idempotente por requestId.
+- `settleEntry(state, tenantId, entryId, { amount, method, date, user, note, requestId })` → baixa parcial/total; erro se > saldo, cancelada, ou requestId repetido com outro conteúdo (mesmo conteúdo = no-op).
+- `reverseSettlement(state, tenantId, entryId, settlementId, user, reason)`.
+- `cancelEntry(state, tenantId, entryId, user, reason)` — só sem baixas ativas.
+- `entryStatus(entry, today: string): EntryStatus`; `entryPaid(entry)`; `entryBalance(entry)`.
+- `closeCash(state, tenantId, id, counted, reason?, user?)`: grava expected/difference/closingReason/closedBy; diferença ≠ 0 exige motivo; NÃO cria lançamento financeiro. Fechar duas vezes → erro.
+- `importProducts(state, tenantId, rows: ProductImportRow[], strategy: 'create' | 'update' | 'upsert', ): ImportReport` — chave SKU por tenant; duplicados na planilha → segunda ocorrência ignorada com erro; respeita limite do plano; tudo-ou-nada por linha válida (linhas inválidas viram erros, não abortam).
+- Cupons SaaS: `couponQuote(state, tenantId, code, planId, period, today)` → `{ coupon, original, discount, total }` ou erro com motivo (inexistente, inativo, fora da vigência, plano/período inelegível, limite total, limite por empresa). `createSubscriptionInvoice(state, { tenantId, planId, period, couponCode?, provider, requestId, today })` → BillingInvoice Pendente com desconto aplicado só nesta fatura; registra redemption. Nunca marca pago.
+- `saveCoupon(state, coupon)` valida (percent 1–10000 bps, fixed > 0, datas, código único em maiúsculas).
+- `can(role, module, action)` inalterado.
+
+## UI compartilhada (`src/ui.tsx`)
+`Button({variant:'primary'|'secondary'|'ghost'|'outline'|'danger', loading, icon, ...})`, `PageHeader`, `Panel`, `Stat({label,value,hint,icon,tone,trend?:{value:number,label:string},action?})`, `Badge`, `Modal({title,open,onClose,children,footer?,size?:'md'|'lg'|'xl'})`, `Field({label,hint?,error?,children})`, `Empty`, `DataTable`, `useNotice`, `MoneyInput({value:number(centavos),onChange})`, `ChartTooltip`.
+Classes: `.btn .primary .secondary .ghost .outline .danger .is-loading`, `.grid*`, `.stack`, `.toolbar`, `.form-grid`, `.form-section`, `.kanban`, `.kanban-col`, `.kanban-card`, `.calendar`, `.chat-*`.
+
+## Tour
+Elementos-alvo com `data-tour="<modulo>-<elemento>"` (ex.: `pdv-search`, `pdv-cart`, `pdv-pay`, `products-new`). Passos em `src/app/tours.ts`. Cada agente coloca `data-tour` nos elementos das suas telas e registra os passos via mensagem ao coordenador.
+
+## Responsabilidades
+- Domínio: `domain.ts`, `migrations.ts`, `seed.ts`, `store.tsx`, `services/billing.ts`, `domain.test.ts`.
+- ERP: `src/features/erp/*`.
+- Público/Admin: `src/features/public/*`, `src/features/admin/*`.
+- Coordenador: `styles.css`, `ui.tsx`, `app/*`, `navigation.ts`, `main.tsx`, `dashboard`, `settings`, docs, e2e de raiz, screenshots.

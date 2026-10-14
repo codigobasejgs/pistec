@@ -1,8 +1,22 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map<string, string>();
+  globalThis.localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, String(v)); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size; },
+  } as Storage;
+}
+
 import { createSeed, PLANS, INITIAL_SESSION } from './seed';
-import { can, cancelSale, closeCash, completeSale, convertRecord, createTenant, moveStock, openCash, receivePurchase, saveProduct, transferStock, transitionRecord, validateState } from './domain';
-import { createDemoStore, DemoDatabase } from './store';
+import { can, cancelSale, closeCash, completeSale, convertRecord, createTenant, moveStock, openCash, receivePurchase, saveProduct, transferStock, transitionRecord, validateState, settleEntry, reverseSettlement, cancelEntry, entryPaid, entryBalance, entryStatus, importProducts, saveCoupon, couponQuote, createSubscriptionInvoice } from './domain';
+import { createDemoStore, DemoDatabase, persistSession, loadPersistedSession, isValidSession } from './store';
+import { migrate } from './migrations';
 import { MockAsaasAdapter, MockInfinitePayAdapter } from './services/billing';
 import type { DemoState, OperationalRecord, SaleInput } from './types';
 
@@ -252,10 +266,10 @@ describe('limites, caixa, permissões e validação', () => {
     openCash(state, tenantId, branchId, existing.opening);
     expect(state.cashRegisters).toHaveLength(count);
     unchanged(() => openCash(state, tenantId, branchId, existing.opening + 1));
-    closeCash(state, tenantId, existing.id, 100);
+    closeCash(state, tenantId, existing.id, 100, 'Ajuste de fechamento');
     const snapshot = structuredClone(state);
-    closeCash(state, tenantId, existing.id, 100); expect(state).toEqual(snapshot);
-    unchanged(() => closeCash(state, tenantId, existing.id, 101));
+    closeCash(state, tenantId, existing.id, 100, 'Ajuste de fechamento'); expect(state).toEqual(snapshot);
+    unchanged(() => closeCash(state, tenantId, existing.id, 101, 'Outro valor'));
     expect(state.audit.at(-1)?.action).toContain('diferença');
     openCash(state, tenantId, branchId, 0);
     expect(state.cashRegisters).toHaveLength(count + 1);
@@ -369,7 +383,7 @@ describe('store IndexedDB: persistir antes de publicar', () => {
     const store = createDemoStore({ db, seed: () => structuredClone(baseline), latency: 0 });
     await expect(store.ready).rejects.toThrow('incompatível');
     expect((await db.snapshots.get('demo'))!.state.version).toBe(999);
-    await store.reset(); expect(store.getSnapshot().state.version).toBe(1);
+    await store.reset(); expect(store.getSnapshot().state.version).toBe(2);
   });
 });
 
@@ -403,3 +417,413 @@ describe.each([MockAsaasAdapter, MockInfinitePayAdapter])('billing mock %s', Ada
     expect((await adapter.getInvoice(request.reference)).status).toBe('Pendente');
   });
 });
+
+describe('completeSale com troco e estorno líquido', () => {
+  it('venda com troco: valor entregue em dinheiro, grava aplicado + tendered + change, caixa recebe líquido', () => {
+    const cashBefore = openRegister().movements.length;
+    const cashBalanceBefore = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    // Venda de 3490 (preço do produto 1). Cliente entrega 5000 em dinheiro (troco 1510)
+    const sale = completeSale(state, input({ payments: [{ method: 'Dinheiro', amount: 5000 }] }));
+    expect(sale.total).toBe(3490);
+    expect(sale.change).toBe(1510);
+    expect(sale.payments).toHaveLength(1);
+    expect(sale.payments[0]).toEqual({ method: 'Dinheiro', amount: 3490, tendered: 5000 });
+    // Caixa recebe apenas o dinheiro líquido (3490), nunca o bruto entregue (5000)
+    expect(openRegister().movements).toHaveLength(cashBefore + 1);
+    const lastMov = openRegister().movements.at(-1)!;
+    expect(lastMov.amount).toBe(3490);
+    const cashBalanceAfter = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    expect(cashBalanceAfter).toBe(cashBalanceBefore + 3490);
+    // Financeiro registra receita = total da venda (3490), com baixa integral automática
+    const fin = state.finances.find(f => f.reference === sale.id)!;
+    expect(fin.amount).toBe(3490);
+    expect(fin.paid).toBe(true);
+    expect(fin.settlements).toHaveLength(1);
+    expect(fin.settlements[0].amount).toBe(3490);
+  });
+
+  it('pagamento misto com troco no dinheiro', () => {
+    // Venda de 3490: 2000 no Pix + 2000 em Dinheiro (troco de 510)
+    const cashBalanceBefore = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    const sale = completeSale(state, input({
+      payments: [
+        { method: 'Pix', amount: 2000 },
+        { method: 'Dinheiro', amount: 2000 },
+      ],
+    }));
+    expect(sale.total).toBe(3490);
+    expect(sale.change).toBe(510);
+    expect(sale.payments.find(p => p.method === 'Pix')).toEqual({ method: 'Pix', amount: 2000 });
+    expect(sale.payments.find(p => p.method === 'Dinheiro')).toEqual({ method: 'Dinheiro', amount: 1490, tendered: 2000 });
+    const cashBalanceAfter = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    expect(cashBalanceAfter).toBe(cashBalanceBefore + 1490);
+  });
+
+  it('rejeita não-dinheiro acima do total', () => {
+    // Total 3490, cartão com 4000
+    unchanged(() => completeSale(state, input({ payments: [{ method: 'Crédito', amount: 4000 }] })));
+  });
+
+  it('rejeita pagamento insuficiente', () => {
+    // Total 3490, entrega 3000 em dinheiro
+    unchanged(() => completeSale(state, input({ payments: [{ method: 'Dinheiro', amount: 3000 }] })));
+  });
+
+  it('precisão com decimais de 1 centavo (R$ 0,01)', () => {
+    // Cria produto de 1 centavo
+    state.products.push({
+      id: 'prod-centavo', tenantId, name: 'Arruela 1 centavo', sku: 'ARR-001', barcode: 'DEMO-CENTAVO',
+      category: 'Fixação', brand: 'Genérica', cost: 1, price: 1, min: 1, max: 100, location: '', active: true, details: {},
+    });
+    state.balances.push({ tenantId, branchId, productId: 'prod-centavo', quantity: 10, reserved: 0 });
+    // Total 1 centavo, paga com 100 centavos (R$ 1,00) em dinheiro -> troco 99
+    const sale = completeSale(state, input({ items: [{ productId: 'prod-centavo', quantity: 1 }], payments: [{ method: 'Dinheiro', amount: 100 }], requestId: 'sale-centavo' }));
+    expect(sale.total).toBe(1);
+    expect(sale.change).toBe(99);
+    expect(sale.payments[0]).toEqual({ method: 'Dinheiro', amount: 1, tendered: 100 });
+  });
+
+  it('cancelSale estorna apenas o dinheiro líquido (retido), preserva idempotência', () => {
+    const cashBalanceBefore = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    const sale = completeSale(state, input({ payments: [{ method: 'Dinheiro', amount: 5000 }] }));
+    expect(sale.change).toBe(1510);
+    // Caixa subiu 3490
+    cancelSale(state, tenantId, sale.id);
+    const cashBalanceAfter = openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0);
+    // Caixa voltou ao valor inicial (estornou exatamente 3490 líquido, não 5000)
+    expect(cashBalanceAfter).toBe(cashBalanceBefore);
+    // Cancelamento repetido é no-op
+    cancelSale(state, tenantId, sale.id);
+    expect(openRegister().opening + openRegister().movements.reduce((t, m) => t + m.amount, 0)).toBe(cashBalanceBefore);
+  });
+});
+
+describe('baixas parciais (settlements), estornos e cancelamento', () => {
+  const entryDate = '2026-10-14';
+  let testEntryId: string;
+
+  beforeEach(() => {
+    // Cria uma conta a receber de R$ 1.000,00 (100000 centavos)
+    testEntryId = 'fin-test-receivable';
+    state.finances.push({
+      id: testEntryId, tenantId, branchId, type: 'Receita', category: 'Serviços',
+      description: 'Consultoria de frotas', amount: 100000, dueDate: '2026-10-20',
+      paid: false, settlements: [], reference: 'manual:test:1', date: entryDate,
+    });
+  });
+
+  it('baixa parcial: amount original imutável, paid false, saldo calculado', () => {
+    let entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entryStatus(entry, '2026-10-14')).toBe('Em aberto');
+    expect(entryPaid(entry)).toBe(0);
+    expect(entryBalance(entry)).toBe(100000);
+
+    const s1 = settleEntry(state, tenantId, testEntryId, {
+      amount: 40000, method: 'Pix', date: '2026-10-14', user: 'Carlos', note: 'Primeira parcela 40%', requestId: 'req-s1',
+    });
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(s1.amount).toBe(40000);
+    expect(entry.amount).toBe(100000); // Imutável!
+    expect(entry.paid).toBe(false);
+    expect(entryPaid(entry)).toBe(40000);
+    expect(entryBalance(entry)).toBe(60000);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Parcialmente pago');
+  });
+
+  it('baixa integral em parcelas até quitação', () => {
+    let entry = state.finances.find(f => f.id === testEntryId)!;
+    settleEntry(state, tenantId, testEntryId, { amount: 60000, method: 'Pix', date: '2026-10-14', requestId: 'req-p1' });
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entry.paid).toBe(false);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Parcialmente pago');
+
+    settleEntry(state, tenantId, testEntryId, { amount: 40000, method: 'Transferência', date: '2026-10-14', requestId: 'req-p2' });
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entry.paid).toBe(true);
+    expect(entryPaid(entry)).toBe(100000);
+    expect(entryBalance(entry)).toBe(0);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Quitado');
+  });
+
+  it('idempotência de baixa por requestId (mesmo conteúdo no-op; diferente erro)', () => {
+    const s1 = settleEntry(state, tenantId, testEntryId, { amount: 30000, method: 'Pix', date: '2026-10-14', requestId: 'req-idem' });
+    const s2 = settleEntry(state, tenantId, testEntryId, { amount: 30000, method: 'Pix', date: '2026-10-14', requestId: 'req-idem' });
+    expect(s1.id).toBe(s2.id);
+    expect(state.finances.find(f => f.id === testEntryId)!.settlements).toHaveLength(1);
+
+    unchanged(() => settleEntry(state, tenantId, testEntryId, { amount: 35000, method: 'Pix', date: '2026-10-14', requestId: 'req-idem' }));
+  });
+
+  it('rejeita baixa com valor superior ao saldo', () => {
+    settleEntry(state, tenantId, testEntryId, { amount: 80000, method: 'Pix', date: '2026-10-14', requestId: 'req-over-1' });
+    unchanged(() => settleEntry(state, tenantId, testEntryId, { amount: 30000, method: 'Pix', date: '2026-10-14', requestId: 'req-over-2' }));
+  });
+
+  it('estorno de baixa (reverseSettlement) restaura saldo e status', () => {
+    let entry = state.finances.find(f => f.id === testEntryId)!;
+    const s = settleEntry(state, tenantId, testEntryId, { amount: 100000, method: 'Pix', date: '2026-10-14', requestId: 'req-full' });
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entry.paid).toBe(true);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Quitado');
+
+    reverseSettlement(state, tenantId, testEntryId, s.id, 'Carlos', 'Comprovante não compensou');
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entry.paid).toBe(false);
+    expect(entryPaid(entry)).toBe(0);
+    expect(entryBalance(entry)).toBe(100000);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Em aberto');
+  });
+
+  it('cancelamento de entrada exige estorno prévio das baixas ativas', () => {
+    let entry = state.finances.find(f => f.id === testEntryId)!;
+    const s = settleEntry(state, tenantId, testEntryId, { amount: 30000, method: 'Pix', date: '2026-10-14', requestId: 'req-part' });
+    // Tenta cancelar com baixa ativa -> erro
+    unchanged(() => cancelEntry(state, tenantId, testEntryId, 'Carlos', 'Cancelando'));
+    // Estorna a baixa ativa
+    reverseSettlement(state, tenantId, testEntryId, s.id, 'Carlos', 'Estorno para cancelamento');
+    // Agora cancela com sucesso
+    cancelEntry(state, tenantId, testEntryId, 'Carlos', 'Cancelamento definitivo');
+    entry = state.finances.find(f => f.id === testEntryId)!;
+    expect(entry.cancelled).toBe(true);
+    expect(entryStatus(entry, '2026-10-14')).toBe('Cancelado');
+  });
+
+  it('status vencido quando dueDate < today', () => {
+    const entry = state.finances.find(f => f.id === testEntryId)!;
+    entry.dueDate = '2026-10-10';
+    expect(entryStatus(entry, '2026-10-14')).toBe('Vencido');
+  });
+});
+
+describe('closeCash com auditoria e motivo obrigatório', () => {
+  it('diferença zero não exige motivo', () => {
+    const cash = openRegister();
+    const expected = cash.opening + cash.movements.reduce((t, m) => t + m.amount, 0);
+    closeCash(state, tenantId, cash.id, expected);
+    const updated = state.cashRegisters.find(c => c.id === cash.id)!;
+    expect(updated.closedAt).toBeTruthy();
+    expect(updated.difference).toBe(0);
+    expect(updated.closingReason).toBeUndefined();
+  });
+
+  it('diferença diferente de zero EXIGE motivo e rejeita sem motivo', () => {
+    const cash = openRegister();
+    const expected = cash.opening + cash.movements.reduce((t, m) => t + m.amount, 0);
+    unchanged(() => closeCash(state, tenantId, cash.id, expected - 500));
+    closeCash(state, tenantId, cash.id, expected - 500, 'Falta de troco comprovada', 'Carlos');
+    const updated = state.cashRegisters.find(c => c.id === cash.id)!;
+    expect(updated.difference).toBe(-500);
+    expect(updated.closingReason).toBe('Falta de troco comprovada');
+    expect(updated.closedBy).toBe('Carlos');
+  });
+
+  it('duplo fechamento com mesmo valor é no-op, com valor diferente é erro', () => {
+    const cash = openRegister();
+    const expected = cash.opening + cash.movements.reduce((t, m) => t + m.amount, 0);
+    closeCash(state, tenantId, cash.id, expected);
+    closeCash(state, tenantId, cash.id, expected);
+    unchanged(() => closeCash(state, tenantId, cash.id, expected + 100));
+  });
+});
+
+describe('importProducts: create, update, upsert, limites e duplicatas', () => {
+  it('create: adiciona novos, pula existentes, detecta duplicata na planilha', () => {
+    const report = importProducts(state, tenantId, [
+      { line: 1, sku: 'NEW-001', name: 'Item Novo 1', category: 'Filtros', brand: 'Bosch', barcode: 'DEMO-NEW-1', unit: 'UN', cost: 1000, price: 2000, min: 2, max: 20, location: 'A1' },
+      { line: 2, sku: 'NEW-001', name: 'Item Novo Duplicado Planilha', category: 'Filtros', brand: 'Bosch', barcode: 'DEMO-NEW-2', unit: 'UN', cost: 1000, price: 2000, min: 2, max: 20, location: 'A1' },
+      { line: 3, sku: 'PRE-0001', name: 'SKU já existente na loja', category: 'Filtros', brand: 'Tecfil', barcode: '', unit: 'UN', cost: 1000, price: 2000, min: 2, max: 20, location: '' },
+    ], 'create');
+    expect(report.created).toBe(1);
+    expect(report.skipped).toBe(1);
+    expect(report.errors).toHaveLength(1);
+    expect(report.errors[0].message).toContain('duplicado na planilha');
+    expect(state.products.find(p => p.sku === 'NEW-001')).toBeTruthy();
+  });
+
+  it('update: atualiza existentes, pula novos', () => {
+    const report = importProducts(state, tenantId, [
+      { line: 1, sku: 'PRE-0001', name: 'Filtro Atualizado via Planilha', category: 'Filtros', brand: 'Tecfil', barcode: 'DEMO-3-000001', unit: 'UN', cost: 1900, price: 3990, min: 10, max: 200, location: 'C1' },
+      { line: 2, sku: 'NOT-EXIST', name: 'Não existe', category: '', brand: '', barcode: '', unit: '', cost: 100, price: 200, min: 1, max: 2, location: '' },
+    ], 'update');
+    expect(report.updated).toBe(1);
+    expect(report.skipped).toBe(1);
+    expect(state.products.find(p => p.sku === 'PRE-0001')?.name).toBe('Filtro Atualizado via Planilha');
+    expect(state.products.find(p => p.sku === 'PRE-0001')?.price).toBe(3990);
+  });
+
+  it('upsert: cria e atualiza na mesma carga', () => {
+    const report = importProducts(state, tenantId, [
+      { line: 1, sku: 'PRE-0002', name: 'Óleo Sintético Atualizado', category: 'Lubrificantes', brand: 'Mobil', barcode: 'DEMO-3-000002', unit: 'UN', cost: 3500, price: 5990, min: 10, max: 200, location: '' },
+      { line: 2, sku: 'UPSERT-NEW', name: 'Item Criado via Upsert', category: 'Geral', brand: '', barcode: '', unit: 'UN', cost: 500, price: 1500, min: 1, max: 10, location: '' },
+    ], 'upsert');
+    expect(report.created).toBe(1);
+    expect(report.updated).toBe(1);
+  });
+
+  it('respeita limite de produtos do plano', () => {
+    const plan = state.plans.find(p => p.id === 'premium')!;
+    plan.products = state.products.filter(p => p.tenantId === tenantId && p.active).length; // Limite atingido
+    const report = importProducts(state, tenantId, [
+      { line: 1, sku: 'OVER-LIMIT', name: 'Excede limite', category: 'Geral', brand: '', barcode: '', unit: '', cost: 100, price: 200, min: 1, max: 2, location: '' },
+    ], 'create');
+    expect(report.created).toBe(0);
+    expect(report.errors[0].message).toContain('Limite de produtos do plano');
+  });
+
+  it('rejeita valores não inteiros', () => {
+    const report = importProducts(state, tenantId, [
+      { line: 1, sku: 'FLOAT-VAL', name: 'Item float', category: '', brand: '', barcode: '', unit: '', cost: 10.5, price: 20, min: 1, max: 2, location: '' },
+    ], 'create');
+    expect(report.created).toBe(0);
+    expect(report.errors[0].message.toLowerCase()).toContain('valores de custo, preço e limites devem ser inteiros');
+  });
+});
+
+describe('cupons SaaS e criação de faturas com desconto', () => {
+  it('exemplo obrigatório do contrato: Profissional mensal 24900 com 20% (2000 bps) = 19920', () => {
+    // Cupom PISTEC20 existe no seed (2000 bps, planos profissional e premium, mensal/trimestral/anual)
+    const quote = couponQuote(state, tenantId, 'PISTEC20', 'profissional', 'monthly', '2026-10-14');
+    expect(quote.original).toBe(24900);
+    expect(quote.discount).toBe(4980); // 24900 * 0.20 = 4980
+    expect(quote.total).toBe(19920);
+
+    const invoice = createSubscriptionInvoice(state, {
+      tenantId,
+      planId: 'profissional',
+      period: 'monthly',
+      couponCode: 'PISTEC20',
+      provider: 'Asaas',
+      requestId: 'sub-prof-20',
+      today: '2026-10-14',
+    });
+    expect(invoice.amount).toBe(19920);
+    expect(invoice.originalAmount).toBe(24900);
+    expect(invoice.discount).toBe(4980);
+    expect(invoice.couponCode).toBe('PISTEC20');
+    expect(invoice.status).toBe('Pendente'); // NUNCA marca paga
+    // Redemption registrada
+    const redemption = state.couponRedemptions.find(r => r.invoiceId === invoice.id)!;
+    expect(redemption.discount).toBe(4980);
+    expect(redemption.tenantId).toBe(tenantId);
+  });
+
+  it('cupom com desconto fixo (BEMVINDO50 R$ 50,00 = 5000 centavos)', () => {
+    const quote = couponQuote(state, tenantId, 'BEMVINDO50', 'essencial', 'monthly', '2026-10-14');
+    expect(quote.original).toBe(12900);
+    expect(quote.discount).toBe(5000);
+    expect(quote.total).toBe(7900);
+  });
+
+  it('rejeita cupom vencido, inativo ou inexistente', () => {
+    expect(() => couponQuote(state, tenantId, 'NAOEXISTE', 'profissional', 'monthly', '2026-10-14')).toThrow('inexistente');
+    saveCoupon(state, { code: 'INATIVO', description: 'Inativo', kind: 'fixed', value: 1000, startsAt: '2026-01-01', endsAt: '2026-12-31', maxUses: 10, perTenant: 1, planIds: [], periods: [], active: false, scope: 'first' });
+    expect(() => couponQuote(state, tenantId, 'INATIVO', 'profissional', 'monthly', '2026-10-14')).toThrow('inativo');
+    saveCoupon(state, { code: 'VENCIDO', description: 'Vencido', kind: 'fixed', value: 1000, startsAt: '2025-01-01', endsAt: '2025-12-31', maxUses: 10, perTenant: 1, planIds: [], periods: [], active: true, scope: 'first' });
+    expect(() => couponQuote(state, tenantId, 'VENCIDO', 'profissional', 'monthly', '2026-10-14')).toThrow('vigência');
+  });
+
+  it('respeita restrição de plano e período', () => {
+    // ANUAL30 só aceita período anual
+    expect(() => couponQuote(state, tenantId, 'ANUAL30', 'profissional', 'monthly', '2026-10-14')).toThrow('período');
+    const valid = couponQuote(state, tenantId, 'ANUAL30', 'profissional', 'annual', '2026-10-14');
+    expect(valid.total).toBe(Math.round(238900 * 0.70));
+  });
+
+  it('respeita limite por empresa e limite total de usos', () => {
+    saveCoupon(state, { code: 'ONCE', description: 'Uma vez só', kind: 'fixed', value: 1000, startsAt: '2026-01-01', endsAt: '2026-12-31', maxUses: 1, perTenant: 1, planIds: [], periods: [], active: true, scope: 'first' });
+    createSubscriptionInvoice(state, { tenantId, planId: 'essencial', period: 'monthly', couponCode: 'ONCE', provider: 'Asaas', requestId: 'use-once-1', today: '2026-10-14' });
+    // Segunda tentativa pela mesma empresa -> erro
+    expect(() => createSubscriptionInvoice(state, { tenantId, planId: 'essencial', period: 'monthly', couponCode: 'ONCE', provider: 'Asaas', requestId: 'use-once-2', today: '2026-10-14' })).toThrow();
+  });
+});
+
+describe('migrações v1 -> v2 e persistência de sessão', () => {
+  it('migrate converte snapshot v1 real preservando registros', async () => {
+    const { readFileSync } = await import('node:fs');
+    const v1Raw = JSON.parse(readFileSync('src/__fixtures__/state-v1.json', 'utf-8'));
+    expect(v1Raw.version).toBe(1);
+    const beforeSalesCount = v1Raw.sales.length;
+    const beforeFinancesCount = v1Raw.finances.length;
+    const beforePaidFinances = v1Raw.finances.filter((f: { paid: boolean }) => f.paid).length;
+
+    const v2 = migrate(v1Raw);
+    expect(v2.version).toBe(2);
+    expect(v2.sales).toHaveLength(beforeSalesCount);
+    expect(v2.finances).toHaveLength(beforeFinancesCount);
+    // Vendas receberam change: 0
+    expect(v2.sales.every(s => s.change === 0)).toBe(true);
+    // Branding radius default
+    expect(v2.tenants.every(t => t.branding.radius === 'default')).toBe(true);
+    // Cupons inicializados vazios
+    expect(v2.coupons).toEqual([]);
+    expect(v2.couponRedemptions).toEqual([]);
+    // Todas as finanças paid que estavam sem baixa receberam settlement integral
+    const migratedSettled = v2.finances.filter(f => f.paid);
+    expect(migratedSettled.length).toBe(beforePaidFinances);
+    expect(migratedSettled.every(f => f.settlements.length === 1 && f.settlements[0].amount === f.amount)).toBe(true);
+    expect(() => validateState(v2)).not.toThrow();
+  });
+
+  it('migrate é transacional: falha não sobrescreve snapshot', async () => {
+    const db = new DemoDatabase('test-transact-migrate');
+    const badV1 = { version: 1, tenants: 'corrompido' };
+    await db.snapshots.put({ id: 'demo', state: badV1 as unknown as DemoState });
+    const store = createDemoStore({ db, seed: () => structuredClone(baseline), latency: 0 });
+    await expect(store.ready).rejects.toThrow();
+    // Snapshot original no IndexedDB não foi corrompido ou sobrescrito
+    const saved = await db.snapshots.get('demo');
+    expect(saved?.state).toEqual(badV1);
+  });
+
+  it('sessão persistida no localStorage, validada e limpa no logout', () => {
+    localStorage.clear();
+    expect(loadPersistedSession()).toBeNull();
+
+    const customSession = {
+      tenantId: 'tenant-oficina',
+      branchId: 'branch-oficina-matriz',
+      role: 'Gerente' as const,
+      name: 'Camila Gerente',
+      admin: false,
+    };
+    persistSession(customSession);
+    expect(loadPersistedSession()).toEqual(customSession);
+    expect(isValidSession(customSession, state)).toBe(true);
+
+    // Sessão inválida com tenant inexistente
+    expect(isValidSession({ ...customSession, tenantId: 'inexistente' }, state)).toBe(false);
+
+    // Logout limpa o localStorage
+    persistSession(null);
+    expect(loadPersistedSession()).toBeNull();
+  });
+
+  it('benchmark validateState: mede tempo no seed e em escala', () => {
+    // Aquecimento
+    for (let i = 0; i < 5; i++) validateState(state);
+
+    const iters = 50;
+    const t0 = performance.now();
+    for (let i = 0; i < iters; i++) validateState(state);
+    const avgSeed = (performance.now() - t0) / iters;
+
+    // Escala 20x de vendas, finanças, auditoria e registros operacionais não-reservados
+    const scaled = structuredClone(state);
+    scaled.plans.forEach(p => { p.users *= 50; p.whatsapp *= 50; p.products *= 50; p.branches *= 50; });
+    const nonReservedRecords = state.records.filter(r => r.fields?.stockState !== 'reserved');
+    for (let i = 0; i < 19; i++) {
+      scaled.sales.push(...state.sales.map((s, idx) => ({ ...s, id: `s-scale-${i}-${idx}`, requestId: `req-scale-${i}-${idx}` })));
+      scaled.finances.push(...state.finances.map((f, idx) => ({ ...f, id: `f-scale-${i}-${idx}`, reference: f.reference ? `ref-scale-${i}-${idx}` : '' })));
+      scaled.audit.push(...state.audit.map((a, idx) => ({ ...a, id: `a-scale-${i}-${idx}` })));
+      scaled.records.push(...nonReservedRecords.map((r, idx) => ({ ...r, id: `r-scale-${i}-${idx}` })));
+    }
+    const t1 = performance.now();
+    for (let i = 0; i < iters; i++) validateState(scaled);
+    const avgScaled = (performance.now() - t1) / iters;
+
+    console.log(`[BENCHMARK] validateState baseline seed: ${avgSeed.toFixed(2)}ms | escala 20x: ${avgScaled.toFixed(2)}ms`);
+    expect(avgSeed).toBeLessThan(5);
+    expect(avgScaled).toBeLessThan(25);
+  });
+});
+

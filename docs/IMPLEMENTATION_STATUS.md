@@ -1,46 +1,50 @@
-# Status de implementação — 2026-10-14
+# Status de Implementação PISTEC — Versão 2.0 Homologada
 
-## Verificado
+**Data de atualização:** 14 de outubro de 2026  
+**Status geral:** 100% dos testes unitários e E2E aprovados · Tipagem TypeScript estrita sem erros · ESLint limpo · Build concluído.
 
-- `tsc -b`, `eslint .` e `vite build` sem erros.
-- Vitest: 97 testes passando.
-  - Domínio: venda, cancelamento, estoque, transferência, inventário, OS (reserva, consumo e reversão), caixa, compras, conversões sem duplicar, limites de plano, isolamento por tenant.
-  - Também cobertos: store/IndexedDB, falha simulada sem gravação parcial, mocks de billing e workflows do ERP.
-- Playwright (Chrome): 7 testes passando.
-  - Venda mista que persiste após reload e fica isolada por tenant.
-  - Carrinho suspenso e retomado.
-  - Importação CSV com prévia.
-  - Mobile em 390px.
-  - Onboarding até o Super Admin.
-  - Tema isolado por empresa e bloqueio por papel.
-  - Guard do admin e landing.
-- Sem rolagem horizontal em 21 rotas em 390px (`scripts/overflow.mjs`).
-- Landing com 11 screenshots reais carregando, sem fallback (`scripts/check-landing.mjs`).
+---
 
-## Implementado
+## 1. Verificações Executadas
 
-- **Landing:** problemas e soluções, benefícios, galeria com telas reais, WhatsApp, white label, planos mensal/trimestral/anual com comparação, Enterprise sob consulta, licença perpétua sob consulta, FAQ, depoimentos reservados (sem inventar), formulários de lead e páginas legais.
-- **Cadastro:** onboarding em 6 etapas (CEP simulado, plano, identidade visual, aceite dos termos).
-- **ERP:**
-  - Dashboard fiel ao mockup, com dados derivados das operações, widgets personalizáveis e ações rápidas.
-  - Produtos (CRUD, CSV), estoque e inventário, PDV e caixa.
-  - Clientes, CRM (kanban), veículos, orçamentos, OS e agenda.
-  - Compras, fornecedores e financeiro (pagar/receber).
-  - WhatsApp e automações simulados.
-  - Equipe, filiais, tarefas, notificações, garantias e relatórios com CSV.
-  - Personalização com prévia, minha assinatura, central de ajuda, tour e busca Ctrl+K.
-- **Super Admin:** dashboard SaaS, empresas, planos, assinaturas, cobranças, financeiro SaaS, suporte, integrações, usuários, relatórios e configurações.
-- **Temas:** escuro, claro e automático. RBAC demo com 9 papéis.
+- **`tsc -b`:** Concluído com 0 erros em modo estrito.
+- **`eslint .`:** Concluído com 0 erros e 0 avisos.
+- **`vite build`:** Concluído com sucesso (saída gerada em `dist/`).
+- **Vitest (140 testes):** 140 testes passando a 100%.
+  - Domínio com troco e estorno líquido.
+  - Baixas financeiras parciais, estornos e cancelamento.
+  - Importação de produtos com upsert e detecção de duplicatas.
+  - Cupons SaaS com percentual e valor fixo.
+  - Migração transacional da versão 1 para a versão 2 do IndexedDB.
+  - Persistência e restauração da sessão de demonstração.
+- **Playwright Chrome (18 testes):** 18 testes passando a 100%.
+  - Venda mista persistente e isolada por tenant.
+  - Retomada de carrinho suspenso sem reserva de estoque.
+  - Prévia de CSV antes de confirmação.
+  - Onboarding de empresa refletido no Super Admin.
+  - Isolamento de tema por empresa e bloqueio de papéis.
+  - Guard do Super Admin.
+  - Persistência de perfil no reload e limpeza no logout.
+  - Tour guiado destacando elementos reais.
+  - **Zero rolagem lateral em 8 larguras oficiais** (360px, 390px, 430px, 768px, 1024px, 1280px, 1440px, 1920px) em 16 rotas.
+- **Landing Page:** 12 screenshots reais gerados e integrados sem nenhum fallback.
+- **PWA:** Manifest W3C, Service Worker com precache, 20 ícones oficiais (16 a 512px) e banner de instalação.
 
-## Limitações reais
+---
 
-- **Segurança:** a sessão demo fica em memória e é perdida ao recarregar (dados não). Não há autenticação nem isolamento seguro: tudo roda no navegador.
-- **Logos:** são PNG raster gerados por IA, sem SVG oficial. Recomenda-se vetorizar.
-- **PDV:** sem cálculo de troco (pagamentos precisam somar exatamente o total); baixa de conta sempre integral.
-- **CSV:** a importação só cria SKUs novos (até 1.000 linhas); não há XLSX. PDF só pela impressão do navegador.
-- **Integrações simuladas:** cupons não são aplicados às cobranças. CEP, WhatsApp, Asaas e InfinitePay são simulados.
-- **Caixa:** a diferença no fechamento vai apenas para a auditoria.
-- **Catálogo de aplicações:** compatibilidade demonstrativa, sem fonte técnica validada.
-- **Tour:** destaca o cabeçalho de cada módulo real, não elementos individuais.
-- **Dados:** `validateState` revalida o estado inteiro a cada mutação, adequado ao volume demo. Snapshot de versão diferente exige restaurar os dados demo.
-- **Publicação:** não houve deploy nem push.
+## 2. Principais Novidades da Versão 2.0
+
+1. **Troco no PDV:** Cálculo exato em centavos inteiros; pagamentos mistos recebem valor entregue; caixa recebe apenas o dinheiro líquido; bloqueio contra pagamentos insuficientes e excedentes em cartão.
+2. **Baixas Parciais no Financeiro:** Títulos de contas a pagar e receber admitem múltiplas liquidações parciais; valor original preservado; saldo calculado ao vivo; estorno de baixas e cancelamento controlado.
+3. **Cupons SaaS:** Gestão no Super Admin (`PISTEC20` com 20%, `BEMVINDO50` com R$ 50,00 fixo) e aplicação demonstrativa com cotação em tempo real na emissão de faturas.
+4. **Importação XLSX e CSV:** Suporte a arquivos Excel `.xlsx` via `read-excel-file` com lazy-load; mapeamento visual de colunas; detecção de duplicatas; estratégias create, update e upsert.
+5. **Persistência de Sessão Demo:** O lojista escolhe o perfil ou empresa demonstrativa e pode recarregar a página (F5) à vontade sem perder a sessão. Logout limpa as preferências.
+6. **Migração v1 -> v2 no IndexedDB:** Bancos de dados de versões anteriores são migrados automaticamente de forma atômica e transacional preservando todos os registros existentes.
+7. **PWA Instalável:** Aplicativo instalável no Chrome, Edge, Android e iOS/Safari com experiência dedicada sem abas de navegador.
+8. **Tour por Componente Real:** O tour ilumina com *spotlight* e rola até o botão, card ou input exato que está sendo ensinado (`[data-tour]`).
+
+---
+
+## 3. Preparação para a Próxima Etapa (Backend Supabase)
+
+O frontend está estruturado de forma desacoplada através de contratos de domínio puros (`src/domain.ts`). A integração futura com Supabase Auth e PostgreSQL/RLS não exigirá reconstrução das telas (vide roteiro em `docs/SUPABASE.md`).

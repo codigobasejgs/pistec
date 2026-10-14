@@ -1,57 +1,83 @@
 # PISTEC — Tecnologia que move seu negócio
 
-Frontend SaaS multiempresa para oficinas, motopeças e autopeças. **Modo demonstração**: dados fictícios e persistência local (IndexedDB). Não há backend, autenticação real, cobrança, envio de WhatsApp nem emissão fiscal.
+Frontend SaaS multiempresa para oficinas mecânicas, oficinas de motocicletas, motopeças e autopeças.
 
-## Executar
+**Versão 2.0 Homologada:** PWA instalável, troco no PDV, baixas parciais no financeiro, cupons promocionais SaaS, importação de planilhas XLSX e CSV, tour guiado interativo sobre os elementos reais, sessão demonstrativa persistida no navegador e 140 testes automatizados aprovados.
+
+---
+
+## 🚀 Como Executar
 
 ```bash
+# 1. Instalar dependências
 npm install
-npm run dev          # http://127.0.0.1:5173
-npm run build && npm run preview
+
+# 2. Iniciar servidor de desenvolvimento (http://127.0.0.1:5173)
+npm run dev
+
+# 3. Gerar build de produção e testar prévia local
+npm run build
+npm run preview
 ```
 
-## Verificar
+---
+
+## 🧪 Suíte de Testes e Homologação
 
 ```bash
+# Checagem estrita de tipos TypeScript (zero erros)
 npm run typecheck
+
+# Auditoria de código ESLint (zero erros e zero avisos)
 npm run lint
-npm test             # Vitest: domínio, store, ERP, modelo público
-npm run test:e2e     # Playwright (usa o Google Chrome instalado)
+
+# Testes unitários e de integração (140 testes passando)
+npm test
+
+# Testes de ponta a ponta no navegador Chrome real (18 testes passando)
+npm run test:e2e
 ```
 
-Screenshots da landing (telas reais, dados demo), com `npm run dev` ativo:
+Para recapturar todas as telas reais em alta resolução para a Landing Page (com `npm run dev` ativo):
 
 ```bash
 npm run screenshots && python scripts/assets.py
 ```
 
-## Ambientes e rotas
+---
 
-| Ambiente | Rota | Entrada demo |
+## 📱 PWA (Progressive Web App Instalável)
+
+O PISTEC pode ser instalado como aplicativo dedicado em computadores e celulares:
+
+- **Android (Chrome/Edge):** Toque em "Instalar PISTEC" no banner ou no menu do navegador.
+- **iPhone / iPad (Safari):** Toque no botão de compartilhar do Safari e selecione *"Adicionar à Tela de Início"*.
+- **Windows / macOS / Linux (Chrome/Edge):** Clique no ícone de instalação na barra de endereço para abrir em janela própria sem abas.
+
+---
+
+## 🏢 Ambientes e Rotas
+
+| Ambiente | Rota | Como Acessar na Demonstração |
 |---|---|---|
-| Site comercial | `/`, `/planos`, `/funcionalidades`, `/oficinas`, `/motopecas`, `/autopecas`, `/contato`, `/cadastro`, `/licenca-perpetua`, `/termos`, `/privacidade` | livre |
-| ERP da loja | `/loja/:tenantSlug/*` (ex.: `/loja/moto-prime/dashboard`) | `/demonstracao`: escolher empresa e perfil |
-| Super Admin | `/admin/*` | `/demonstracao` → "Entrar como Super Admin" |
+| **Site Comercial** | `/`, `/planos`, `/funcionalidades`, `/oficinas`, `/motopecas`, `/autopecas`, `/contato`, `/cadastro`, `/licenca-perpetua`, `/termos`, `/privacidade` | Acesso público direto |
+| **ERP da Loja** | `/loja/:tenantSlug/*` (ex.: `/loja/moto-prime/dashboard`) | Em `/demonstracao`: selecione a empresa e o papel desejado |
+| **Super Admin** | `/admin/*` | Em `/demonstracao`: clique em *"Entrar como Super Admin"* |
 
-Empresas demo: `moto-prime` (Premium, 2 filiais), `oficina-rota-88` (Profissional) e `auto-center` (Essencial), além de 5 empresas só cadastradas, em estados variados (teste, vencida, suspensa, cancelada).
-A sessão demo fica em memória: ao recarregar a página, volta ao perfil padrão (Carlos Silva, Proprietário). Os dados continuam salvos.
-Para restaurar os dados demo: Configurações → "Restaurar todos os dados demo".
+Empresas de demonstração prontas:
+1. **Moto Prime Peças** (`moto-prime`): Motopeças, Plano Premium, matriz e filial centro.
+2. **Oficina Rota 88** (`oficina-rota-88`): Oficina mecânica, Plano Profissional.
+3. **Auto Center Peças** (`auto-center`): Autopeças, Plano Essencial.
+E mais 5 empresas cadastradas em diferentes situações (em teste, vencida, suspensa, cancelada) para visualização no Super Admin.
 
-## Arquitetura
+Para reiniciar todos os dados: Menu Sistema -> **Configurações** -> *"Restaurar todos os dados demo"*.
 
-- `src/types.ts`: modelos compartilhados (dinheiro sempre em centavos inteiros).
-- `src/domain.ts`: regras puras e atômicas (venda, cancelamento, estoque, OS, caixa, compras, conversões, limites de plano, `can()` para RBAC demo) e `validateState`.
-- `src/store.tsx`: fila serializada de mutações. Grava o snapshot no Dexie antes de publicar, simula latência e falha.
-- `src/seed.ts`: dados determinísticos, com datas relativas ao dia atual.
-- `src/services/billing.ts`: `BillingProviderAdapter`, `MockAsaasAdapter`, `MockInfinitePayAdapter`, sem rede nem segredos. O retorno do checkout nunca confirma pagamento.
-- `src/app/`: layout (sidebar, topbar, busca Ctrl+K, tour); `src/features/*`: telas.
+---
 
-Asaas e InfinitePay servem **apenas** às assinaturas do PISTEC (`state.invoices`). Vendas das lojas ficam em `sales`/`finances`.
+## 📚 Documentação Técnica
 
-## Publicação (Vercel)
-
-`vercel.json` já traz rewrites de SPA e cabeçalhos básicos. Build: `npm run build`; saída: `dist`. Nenhuma variável de ambiente é necessária. **Nada foi publicado nem enviado a repositório remoto.**
-
-## Próximos passos (backend)
-
-Veja `docs/SUPABASE.md` e `docs/IMPLEMENTATION_STATUS.md`.
+- `docs/QA_FINAL_REPORT.md`: Relatório completo de homologação e matriz módulo por módulo.
+- `docs/PWA_IMPLEMENTATION.md`: Arquitetura do PWA, Web App Manifest, Service Worker e ícones oficiais.
+- `docs/UX_USABILITY_REPORT.md`: Desafio do usuário iniciante (12 tarefas), termos simples e acessibilidade WCAG.
+- `docs/SUPABASE.md`: Roteiro e checklist para futura conexão com banco Supabase e autenticação real.
+- `docs/CONTRACT.md`: Contratos de domínio, assinaturas de funções e regras transacionais.

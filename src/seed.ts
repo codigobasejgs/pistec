@@ -1,4 +1,4 @@
-﻿import type { DemoState, Plan, Session, OperationalRecord, Product, Tenant } from './types';
+﻿import type { DemoState, Plan, Session, OperationalRecord, Product, Tenant, Coupon } from './types';
 import { completeSale, openCash, closeCash, receivePurchase, transitionRecord, convertRecord, validateState, domainClock } from './domain';
 
 export const PLANS: Plan[] = [
@@ -42,7 +42,24 @@ function buildSeed(reference: Date): DemoState {
     const value = new Date(anchor); value.setUTCDate(value.getUTCDate() + days); value.setUTCHours(hour, 0, 0, 0); return value.toISOString();
   };
   const date = (days: number) => at(days).slice(0, 10);
-  const state: DemoState = { version: 1, tenants: [], plans: structuredClone(PLANS), branches: [], products: [], customers: [], balances: [], movements: [], sales: [], cashRegisters: [], finances: [], records: [], invoices: [], audit: [] };
+  const state: DemoState = {
+    version: 2,
+    tenants: [],
+    plans: structuredClone(PLANS),
+    branches: [],
+    products: [],
+    customers: [],
+    balances: [],
+    movements: [],
+    sales: [],
+    cashRegisters: [],
+    finances: [],
+    records: [],
+    invoices: [],
+    coupons: [],
+    couponRedemptions: [],
+    audit: [],
+  };
   const definitions = [
     { key: 'autopecas', name: 'Auto Center Peças', slug: 'auto-center', owner: 'Rafael Mendes', profile: 'Autopeças', planId: 'essencial', color: '#f59e0b' },
     { key: 'oficina', name: 'Oficina Rota 88', slug: 'oficina-rota-88', owner: 'Camila Ribeiro', profile: 'Oficina mecânica', planId: 'profissional', color: '#38bdf8' },
@@ -56,7 +73,7 @@ function buildSeed(reference: Date): DemoState {
   for (const [index, definition] of definitions.entries()) {
     const owner: Tenant = {
       id: `tenant-${definition.key}`, slug: definition.slug, name: definition.name, legalName: `${definition.name} Comércio e Serviços Ltda. (DEMO)`, document: '', owner: definition.owner, email: `contato@${definition.key}.example`, profile: definition.profile, planId: definition.planId, status: 'Ativa', dueDate: date(8 + index), notes: 'Dados fictícios para demonstração. Nenhuma cobrança ou contato real.',
-      branding: { primary: definition.color, secondary: '#818cf8', accent: '#fb923c', sidebar: '#101827', theme: 'dark', logo: '', font: 'Inter', density: 'comfortable', footer: 'PISTEC • Ambiente demonstrativo', widgets: ['revenue', 'sales', 'stock', 'services'] },
+      branding: { primary: definition.color, secondary: '#818cf8', accent: '#fb923c', sidebar: '#101827', theme: 'dark', logo: '', font: 'Inter', density: 'comfortable', radius: 'default', footer: 'PISTEC • Ambiente demonstrativo', widgets: ['revenue', 'sales', 'stock', 'services'] },
     };
     state.tenants.push(owner);
     const branches = [{ id: `branch-${definition.key}-matriz`, tenantId: owner.id, name: 'Matriz • Centro', active: true }];
@@ -100,7 +117,13 @@ function buildSeed(reference: Date): DemoState {
         completeSale(state, { tenantId: owner.id, branchId: branch.id, customerId: customers[(day + 29) % customers.length].id, seller: owner.owner, items: [{ productId: item.id, quantity }], discount: 0, surcharge: 0, payments: [{ method, amount: total }], requestId: `seed:${branch.id}:${date(day)}` });
         if (day < 0) {
           const cash = state.cashRegisters.find(row => row.tenantId === owner.id && row.branchId === branch.id && !row.closedAt)!;
-          closeCash(state, owner.id, cash.id, cash.opening + cash.movements.reduce((total, row) => total + row.amount, 0));
+          const expected = cash.opening + cash.movements.reduce((total, row) => total + row.amount, 0);
+          // Demonstração: no dia -2 na filial premium matriz, simula quebra de caixa de -R$ 20,00 (-2000 centavos) com motivo
+          if (day === -2 && owner.id === 'tenant-premium' && branch.id === 'branch-premium-matriz') {
+            closeCash(state, owner.id, cash.id, expected - 2000, 'Diferença de conferência no fechamento noturno (DEMO)', owner.owner);
+          } else {
+            closeCash(state, owner.id, cash.id, expected);
+          }
         }
         if (day === -21 || day === -9) {
           const purchase = addRecord(owner, 'compras', `Reposição ${branch.name} • ${date(day)}`, 'Pendente', { supplierId: state.records.find(row => row.tenantId === owner.id && row.kind === 'fornecedores')!.id, dueDate: date(day + 28), expectedDate: date(day) }, '', day);
@@ -119,9 +142,49 @@ function buildSeed(reference: Date): DemoState {
         transitionRecord(state, owner.id, service.id, 'Em testes');
         transitionRecord(state, owner.id, service.id, 'Pronta');
         transitionRecord(state, owner.id, service.id, 'Entregue');
-        state.finances.find(row => row.reference === service.id && row.tenantId === owner.id)!.paid = day < -10;
+        const fin = state.finances.find(row => row.reference === service.id && row.tenantId === owner.id)!;
+        fin.paid = day < -10;
+        if (fin.paid) {
+          fin.settlements = [{
+            id: `seed-settle-${service.id}`,
+            requestId: `seed:settle:${service.id}`,
+            amount: fin.amount,
+            date: date(day),
+            method: 'Pix',
+            user: 'Equipe técnica',
+            note: 'Quitação automática da OS',
+          }];
+        }
       }
-      if (day === -15 || day === -3) state.finances.push({ id: `seed-expense-${owner.id}-${day}`, tenantId: owner.id, branchId: state.branches.find(row => row.tenantId === owner.id)!.id, type: 'Despesa', category: day === -15 ? 'Aluguel' : 'Energia', description: day === -15 ? 'Aluguel comercial' : 'Energia elétrica', amount: day === -15 ? 240000 : 46890, dueDate: date(day), paid: day === -15, reference: `expense:${owner.id}:${day}`, date: at(day) });
+      if (day === -15 || day === -3) {
+        const expAmount = day === -15 ? 240000 : 46890;
+        const expDate = date(day);
+        const expPaid = day === -15;
+        const expId = `seed-expense-${owner.id}-${day}`;
+        const settlements = expPaid ? [{
+          id: `seed-settle-${expId}`,
+          requestId: `seed:settle:${expId}`,
+          amount: expAmount,
+          date: expDate,
+          method: 'Boleto',
+          user: owner.owner,
+          note: 'Pagamento integral confirmado',
+        }] : [];
+        state.finances.push({
+          id: expId,
+          tenantId: owner.id,
+          branchId: state.branches.find(row => row.tenantId === owner.id)!.id,
+          type: 'Despesa',
+          category: day === -15 ? 'Aluguel' : 'Energia',
+          description: day === -15 ? 'Aluguel comercial' : 'Energia elétrica',
+          amount: expAmount,
+          dueDate: expDate,
+          paid: expPaid,
+          settlements,
+          reference: `expense:${owner.id}:${day}`,
+          date: at(day),
+        });
+      }
     }
   }
   for (const owner of state.tenants) {
@@ -176,6 +239,106 @@ function buildSeed(reference: Date): DemoState {
     platform('lead-1', 'admin-lead', 'Paulo Henrique (DEMO)', 'Aberto', { email: 'paulo@exemplo.example', company: 'Moto Peças Litoral', consent: 'true' }, -2),
     platform('lead-2', 'admin-lead', 'Renata Vieira (DEMO)', 'Aberto', { email: 'renata@exemplo.example', company: 'Auto Elétrica Norte', consent: 'true' }, -5),
   );
+
+  // Cupons SaaS demonstrativos (contrato item 8)
+  const coupons: Coupon[] = [
+    {
+      id: 'coupon-pistec20',
+      code: 'PISTEC20',
+      description: '20% de desconto no plano Profissional ou Premium',
+      kind: 'percent',
+      value: 2000, // 2000 bps = 20%
+      startsAt: date(-60),
+      endsAt: date(60),
+      maxUses: 100,
+      perTenant: 1,
+      planIds: ['profissional', 'premium'],
+      periods: ['monthly', 'quarterly', 'annual'],
+      active: true,
+      scope: 'first',
+    },
+    {
+      id: 'coupon-bemvindo50',
+      code: 'BEMVINDO50',
+      description: 'R$ 50,00 de desconto na primeira fatura',
+      kind: 'fixed',
+      value: 5000, // 5000 centavos = R$ 50,00
+      startsAt: date(-30),
+      endsAt: date(90),
+      maxUses: 50,
+      perTenant: 1,
+      planIds: [],
+      periods: [],
+      active: true,
+      scope: 'first',
+    },
+    {
+      id: 'coupon-anual30',
+      code: 'ANUAL30',
+      description: '30% de desconto exclusivo em assinaturas anuais',
+      kind: 'percent',
+      value: 3000, // 3000 bps = 30%
+      startsAt: date(-15),
+      endsAt: date(45),
+      maxUses: 20,
+      perTenant: 1,
+      planIds: ['profissional', 'premium', 'enterprise'],
+      periods: ['annual'],
+      active: true,
+      scope: 'first',
+    },
+  ];
+  state.coupons.push(...coupons);
+
+  // Contas parcialmente pagas para demonstração de telas (item 8)
+  const premiumTenant = state.tenants.find(t => t.id === 'tenant-premium')!;
+  const premiumBranch = state.branches.find(b => b.tenantId === premiumTenant.id)!;
+  const partial1 = {
+    id: 'seed-expense-partial-1',
+    tenantId: premiumTenant.id,
+    branchId: premiumBranch.id,
+    type: 'Despesa' as const,
+    category: 'Manutenção',
+    description: 'Reforma da bancada de testes (DEMO parcial)',
+    amount: 150000, // R$ 1.500,00
+    dueDate: date(5),
+    paid: false,
+    settlements: [{
+      id: 'seed-settle-part-1',
+      requestId: 'seed:settle:part-1',
+      amount: 50000, // R$ 500,00 pagos (saldo R$ 1.000,00)
+      date: date(-2),
+      method: 'Pix',
+      user: premiumTenant.owner,
+      note: 'Entrada de 33% paga via Pix',
+    }],
+    reference: 'expense:demo:partial-1',
+    date: at(-2),
+  };
+  const partial2 = {
+    id: 'seed-revenue-partial-2',
+    tenantId: premiumTenant.id,
+    branchId: premiumBranch.id,
+    type: 'Receita' as const,
+    category: 'Serviços',
+    description: 'Contrato frotista mensal (DEMO parcial)',
+    amount: 320000, // R$ 3.200,00
+    dueDate: date(-1), // Vencida parcialmente
+    paid: false,
+    settlements: [{
+      id: 'seed-settle-part-2',
+      requestId: 'seed:settle:part-2',
+      amount: 120000, // R$ 1.200,00 pagos (saldo R$ 2.000,00)
+      date: date(-5),
+      method: 'Transferência',
+      user: premiumTenant.owner,
+      note: 'Primeira parcela recebida',
+    }],
+    reference: 'revenue:demo:partial-2',
+    date: at(-5),
+  };
+  state.finances.push(partial1, partial2);
+
   validateState(state);
   return state;
 }
