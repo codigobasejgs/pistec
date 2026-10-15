@@ -1,5 +1,7 @@
 # PISTEC — Documentação Técnica PWA (Progressive Web App)
 
+> Desatualizado em parte: o service worker agora pré-carrega a lista gerada no build (`vite.config.ts`) e o registro está em `src/pwa.ts`. Estado de validação atual: `docs/PWA_VALIDATION.md`.
+
 ## 1. Visão Geral da Arquitetura PWA
 
 O PISTEC foi transformado em uma Progressive Web App completa, moderna e instalável, mantendo a stack SPA (React 19 + TypeScript + Vite) sem necessidade de reescritas em frameworks móveis proprietários.

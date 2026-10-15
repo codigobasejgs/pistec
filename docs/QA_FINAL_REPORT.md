@@ -1,83 +1,110 @@
-# PISTEC — Relatório Final de Homologação e Garantia da Qualidade (QA)
+# PISTEC 2.0 — Relatório de QA
 
-**Data de emissão:** 14 de outubro de 2026  
-**Ambiente:** Windows 10 Pro 64-bit · Node.js v22.17.1 · Google Chrome 141 (Stable)  
-**Escopo:** Frontend SaaS Multi-tenant PISTEC 2.0 (SPA React 19 + TypeScript 5.8 + Vite 6)  
-**Status executivo:** **HOMOLOGADO PARA DEMONSTRAÇÃO COMERCIAL E TESTES DE CAMPO**
+**Data:** 15/10/2026 · **Ambiente:** Windows 10, Node 22, Google Chrome (headless, emulação de viewport) · **Commit base:** `aae0072`
 
----
+**Estado:** APROVADO COM RESSALVAS para demonstração comercial. Não homologado para produção (não há backend).
 
-## 1. Sumário Executivo de Testes
-
-| Categoria | Total Planejado | Total Executado | Aprovados | Reprovados | Ressalvas |
-|---|---:|---:|---:|---:|---|
-| **Testes Unitários / Integração (Vitest)** | 140 | 140 | **140 (100%)** | 0 | Nenhuma |
-| **Testes E2E Navegador Real (Playwright/Chrome)** | 18 | 18 | **18 (100%)** | 0 | Nenhuma |
-| **Auditoria Responsiva (360px a 1920px)** | 8 larguras | 8 larguras | **8 (100%)** | 0 | Scroll lateral: 0px |
-| **Capturas Reais Integradas na Landing** | 12 imagens | 12 imagens | **12 (100%)** | 0 | Fallbacks: 0 |
-| **Tipagem Estrita TypeScript (`tsc -b`)** | 1 projeto | 1 projeto | **0 erros** | 0 | Modo estrito |
-| **Qualidade de Código (`eslint .`)** | 1 projeto | 1 projeto | **0 erros** | 0 | Zero warnings |
-| **PWA (Manifest, SW, Ícones, Offline)** | 7 requisitos | 7 requisitos | **7 (100%)** | 0 | Conforme seção 4 |
+Estados usados: APROVADO · APROVADO COM RESSALVAS · REPROVADO · NÃO TESTADO · NÃO APLICÁVEL.
 
 ---
 
-## 2. Matriz de Homologação Módulo por Módulo
+## 1. O que foi medido
 
-| Módulo | Funcionalidades Validadas | Cenários Críticos Exercitados | Status | Evidência |
-|---|---|---|:---:|---|
-| **PDV (Frente de Caixa)** | Venda mista, troco, múltiplos pagamentos, bloqueio cartão excedente, comprovante não fiscal, carrinho suspenso | Venda de R$ 34,90 paga com Pix R$ 20,00 + Dinheiro R$ 20,00 gerando troco de R$ 5,10. Caixa recebe apenas dinheiro líquido (R$ 14,90). | **Aprovado** | `erp.e2e.ts`, `domain.test.ts`, `pdv.webp` |
-| **Estoque & Inventário** | Saldo por filial, estoque mínimo, movimentações, conferência cega de inventário, bloqueio negativo | Venda concluída baixa saldo; cancelamento estorna apenas o consumido sem duplicar. Movimentações preservam saldo reservado de OS. | **Aprovado** | `erp.e2e.ts`, `workflows.test.ts`, `estoque.webp` |
-| **Produtos & Catálogo** | CRUD com seções, cálculo ao vivo de margem e markup, importação XLSX e CSV, download de modelo | Importação de 4 produtos com estratégia upsert: novos criados, existentes atualizados, duplicados na planilha rejeitados com indicação de linha. | **Aprovado** | `erp-features.test.ts`, `produtos.webp` |
-| **Financeiro & Caixa** | Recebimentos e pagamentos parciais (settlements), estorno com justificativa, cancelamento de títulos | Título de R$ 1.000,00 recebe baixa de R$ 400,00 (saldo R$ 600,00, status "Parcialmente pago"); estorno restaura saldo original integralmente. | **Aprovado** | `domain.test.ts`, `erp-features.test.ts`, `financeiro.webp` |
-| **Fechamento de Caixa** | Conferência cega, saldo esperado vs contado, diferença obrigatória com justificativa | Fechamento com divergência de -R$ 20,00 rejeitado sem justificativa; aceito com justificativa gravada no registro do caixa e na auditoria. | **Aprovado** | `domain.test.ts`, `Finance.tsx` |
-| **Ordens de Serviço** | Kanban com cores por etapa, diagnóstico, peças, mão de obra, checklist de entrada, reserva e consumo | OS em execução reserva itens; passagem para Pronta consome reserva; cancelamento devolve itens ao saldo disponível. | **Aprovado** | `domain.test.ts`, `rendering.test.tsx`, `ordens-servico.webp` |
-| **CRM de Oportunidades** | Kanban de negociações, cards ricos, motivo de perda, conversão em orçamento | Oportunidade ganha convertida em orçamento aberto exatamente uma vez (idempotente via `convertedId`). | **Aprovado** | `workflows.test.ts`, `crm.webp` |
-| **Agenda de Atendimentos** | Grade horária (timeline) com alerta de conflito para mesmo mecânico, calendário mensal, conversão em OS | Agendamento detecta sobreposição de horário do mesmo mecânico; conversão em orçamento preserva dados. | **Aprovado** | `Records.tsx`, `agenda.webp` |
-| **WhatsApp (Simulado)** | Layout 3 colunas, respostas rápidas, notas internas, ficha do cliente com histórico de OS e consentimento LGPD | Simulador local isolado: nenhuma mensagem externa é disparada; aviso explícito visível. | **Aprovado** | `whatsapp.webp`, `WhatsApp.tsx` |
-| **Super Admin** | Dashboard executivo (MRR, ARR, clientes ativos/teste/novos/inadimplentes, churn), gestão de empresas e planos | MRR calculado a partir das assinaturas ativas; ARR anualizado; faturamento SaaS rigorosamente separado do financeiro das lojas. | **Aprovado** | `saas.e2e.ts`, `admin.webp`, `metrics.ts` |
-| **Cupons SaaS** | CRUD de cupons, cotação em tempo real (`couponQuote`), emissão de fatura com desconto para 1ª mensalidade | Cupom `PISTEC20` concede 20% no plano Profissional (R$ 249,00 -> R$ 199,20); cupons vencidos ou fora da vigência rejeitados com motivo claro. | **Aprovado** | `domain.test.ts`, `Coupons.tsx` |
-| **Multi-Tenancy** | Isolamento por tenantId e branchId, sessão persistida em localStorage, limpeza no logout | Troca de empresa no demo não vaza dados; recarregar página (F5) preserva a empresa e o papel selecionados; logout restaura padrão. | **Aprovado** | `v2.e2e.ts`, `store.tsx` |
-| **White Label & Marca** | 6 paletas prontas, logotipo personalizado, arredondamento de bordas, contraste WCAG pré-calculado | Cores da Loja A não afetam Loja B; Super Admin mantém sempre identidade institucional PISTEC. | **Aprovado** | `saas.e2e.ts`, `personalizacao.webp`, `Branding.tsx` |
-| **Tour Guiado** | Spotlight sobre o elemento real em tela (`[data-tour]`), navegação por passos, suporte a teclado e mobile | 12 módulos cobertos por passos específicos guiando o usuário através dos fluxos principais. | **Aprovado** | `v2.e2e.ts`, `Tour.tsx`, `tours.ts` |
-| **PWA & Offline** | Manifest W3C, Service Worker com precache, ícones oficiais de 16px a 512px, banner discreto de instalação | App instalável no Chrome/Edge desktop e Android; modal de instruções guiadas para Safari iOS/iPadOS; offline serve shell da aplicação. | **Aprovado** | `manifest.webmanifest`, `sw.js`, `InstallBanner.tsx` |
+| Verificação | Resultado | Como reproduzir |
+|---|---|---|
+| Vitest | 156/156 | `npm test` |
+| Playwright (Chrome) | 36 cenários + 14 larguras de layout, todos passando | `npm run test:e2e` |
+| TypeScript estrito | 0 erros | `npm run typecheck` |
+| ESLint | 0 erros, 0 avisos | `npm run lint` |
+| Build | OK | `npm run build` |
+| axe-core (WCAG 2.0/2.1/2.2 A e AA) | 16 cenários, 0 violações | `node scripts/a11y-audit.mjs` (servidor dev ativo) |
+
+Tudo acima roda **somente no Chrome em desktop**, com emulação de largura. Nenhum teste em Firefox, Safari ou dispositivo físico.
 
 ---
 
-## 3. Matriz de Responsividade em 8 Larguras Oficiais
+## 2. Funcionalidades declaradas na v2.0
 
-Verificação automatizada via Playwright (`src/v2.e2e.ts`) percorrendo 16 rotas completas em cada resolução com medição do `document.documentElement.scrollWidth`:
-
-| Largura | Perfil de Dispositivo | Scroll Lateral Indesejado | Navegação / Menu | Status |
-|---|---|:---:|:---:|:---:|
-| **360px** | Smartphones de entrada (Android compactos) | **0px** | Menu drawer / Topbar compacta | **Aprovado** |
-| **390px** | iPhone 12 / 13 / 14 / 15 padrão | **0px** | Menu drawer / Tabelas em cartões | **Aprovado** |
-| **430px** | iPhone 14 / 15 Pro Max, Galaxy Plus | **0px** | Menu drawer / PDV touch | **Aprovado** |
-| **768px** | Tablets em modo retrato (iPad Mini / Air) | **0px** | Sidebar colapsável / Grid 2 col | **Aprovado** |
-| **1024px** | iPad Pro / Notebooks compactos | **0px** | Topbar adaptativa / Grid equilibrado | **Aprovado** |
-| **1280px** | Telas HD padrão (notebooks corporativos) | **0px** | Sidebar fixa / Grid 4 colunas | **Aprovado** |
-| **1440px** | Monitores Full HD compactos / MacBook | **0px** | Layout desktop expandido | **Aprovado** |
-| **1920px** | Monitores Full HD / Ultrawide | **0px** | Conteúdo centralizado (max 1640px) | **Aprovado** |
+| Funcionalidade | Estado | Evidência |
+|---|---|---|
+| Troco no PDV, pagamento misto | APROVADO | `flows.e2e.ts` fluxos 1–2: troco exibido, caixa recebe só o líquido, cartão acima do total e pagamento insuficiente bloqueados |
+| Baixas financeiras parciais | APROVADO | `flows.e2e.ts` fluxo 6: 300 → parcial, 700 → quitado, estorno volta a parcial, baixa acima do saldo bloqueada |
+| Cupons SaaS | APROVADO | `admin.e2e.ts`: 15% em Profissional = R$ 211,65, fatura Pendente; inexistente, expirado e reuso recusados |
+| Importação CSV/XLSX | APROVADO COM RESSALVAS | CSV testado pela interface (`erp.e2e.ts`). XLSX testado só na lógica (`erp-features.test.ts`), não pela interface com arquivo real |
+| Sessão demo persistida | APROVADO | `v2.e2e.ts`: empresa, papel e filial sobrevivem ao reload; sair limpa |
+| Migração IndexedDB v1→v2 | APROVADO | `domain.test.ts` com snapshot v1 real (`src/__fixtures__/state-v1.json`) e falha transacional |
+| PWA instalável | APROVADO COM RESSALVAS | Ver §4. Critérios técnicos validados; instalação real não executada |
+| Tour com spotlight | APROVADO COM RESSALVAS | Ver §5 |
 
 ---
 
-## 4. Auditoria de PWA (Progressive Web App)
+## 3. Fluxos de negócio (pela interface, Chrome)
 
-- **Manifest:** `public/manifest.webmanifest` validado com ID estável `br.com.pistec.app.v1`, `start_url: "/demonstracao"`, `display: "standalone"`, `orientation: "any"`, categorias `business`, `productivity`, `utilities`.
-- **Ícones Oficiais:** 20 arquivos gerados a partir do logotipo oficial metálico PISTEC (`logo (1).png`), cobrindo 16x16, 32x32, 48x48, 72x72, 96x96, 144x144, 180x180, 192x192, 384x384 e 512x512, nas variantes regulares e maskable (com padding de área segura centralizada de 80%).
-- **Service Worker:** `public/sw.js` com estratégia Cache-first para assets com hash e imagens estáticas, Network-first com fallback para `/index.html` em navegações SPA e limpeza automática de caches antigos na ativação.
-- **Experiência de Instalação:** componente `InstallBanner.tsx` escuta evento `beforeinstallprompt`, detecta iOS fornecendo modal passo a passo ilustrado, não reaparece se já estiver em modo standalone e respeita opção "Agora não" por 7 dias.
+| Fluxo | Estado |
+|---|---|
+| Venda: produto → entrada → caixa → PDV com troco → estoque, vendas, caixa → reload | APROVADO |
+| Cancelamento devolve estoque e caixa uma única vez | APROVADO |
+| Compra: pedido → recebimento → estoque e conta a pagar | APROVADO |
+| Oficina: orçamento → aprovar → OS (sem duplicar) → reserva → Pronta consome | APROVADO |
+| Financeiro: parcial, quitação, estorno | APROVADO |
+| Fechamento de caixa com diferença exige motivo | APROVADO |
+| Multi-tenant: produto e tema isolados entre empresas | APROVADO |
+| Permissões: Mecânico sem Financeiro e sem excluir produto | APROVADO |
+| SaaS: onboarding → empresa em teste → Super Admin; suspensão bloqueia ERP sem perder dados | APROVADO |
+| Agenda → conversão direta em OS | NÃO APLICÁVEL: o domínio converte agenda em orçamento; OS sai do orçamento aprovado |
+| Isolamento entre filiais da mesma empresa | NÃO TESTADO pela interface (coberto só em testes de domínio) |
+| Duas abas abertas ao mesmo tempo | NÃO TESTADO |
 
 ---
 
-## 5. Ressalvas e Limitações Documentadas (Não Impeditivas para Demonstração)
+## 4. PWA
 
-1. **Autenticação Real:** O sistema opera em modo de demonstração isolado por navegador (IndexedDB local via Dexie). A troca de papéis e o perfil Super Admin simulam permissões no frontend; a autorização criptográfica real será integrada na etapa de backend com Supabase Auth e RLS.
-2. **Emissão Fiscal:** Os recibos emitidos no PDV são comprovantes operacionais de demonstração sem valor fiscal (NFC-e / NF-e dependem de certificado digital A1 e backend fiscal posterior).
-3. **Mensageria Externa:** O módulo WhatsApp utiliza simulador local interativo; o envio de mensagens reais via Evolution API depende da conexão ao servidor backend onde a API já está instalada.
-4. **Vetorização Oficial:** Os logotipos foram preservados em alta resolução raster (WebP e PNG otimizados a partir dos originais). A criação de um vetor SVG matemático dos traços metálicos é recomendada para materiais gráficos impressos de grande formato.
+| Item | Estado | Observação |
+|---|---|---|
+| Manifest (nome, id, start_url, scope, standalone, cores, ícones 192/512 e maskable) | APROVADO | `pwa.e2e.ts` |
+| Service worker controla a página em produção | APROVADO | `pwa.e2e.ts` |
+| Offline: rotas nunca visitadas abrem do precache, dados locais disponíveis, aviso de sem conexão | APROVADO | `pwa.e2e.ts` |
+| Atualização A→B: aviso discreto, sem reload automático, dados preservados, cache antigo removido | APROVADO | `pwa.e2e.ts` |
+| Atualização bloqueada com modal aberto ou carrinho com itens | APROVADO COM RESSALVAS | Implementado (`useBusyGuard`); o pedido de confirmação não tem teste automatizado |
+| Instalação real (Chrome/Edge Windows, Android, iOS, macOS) | NÃO TESTADO | Exige navegador com interface e dispositivos; o headless não instala apps |
+| Instruções de instalação no iPhone/iPad | APROVADO COM RESSALVAS | Modal implementado; não visto em Safari real |
 
 ---
 
-## 6. Parecer de QA
+## 5. Tour guiado
 
-A aplicação atende a todos os critérios de aceitação funcional, visual, responsiva e de usabilidade estipulados nos prompts de especificação e refinamento. O código está estritamente tipado, com suíte de testes passando a 100% e pronto para homologação com partes interessadas e posterior implantação de infraestrutura.
+| Item | Estado |
+|---|---|
+| Todo passo aponta para um `data-tour` que existe no código | APROVADO (`tours.test.ts`; antes 21 passos estavam quebrados) |
+| Spotlight, avançar e Esc no dashboard | APROVADO (`v2.e2e.ts`) |
+| Módulos fora do perfil não aparecem no seletor | APROVADO COM RESSALVAS (implementado, sem teste dedicado) |
+| Cada passo de cada módulo destaca o elemento certo na tela | NÃO TESTADO (só o tour do dashboard foi percorrido no navegador) |
+| Tour em celular, tema claro e sidebar recolhida | NÃO TESTADO |
+
+---
+
+## 6. Defeitos encontrados nesta auditoria
+
+| ID | Sev. | Defeito | Estado |
+|---|---|---|---|
+| D1 | P2 | 21 passos de tour apontavam para elementos inexistentes | Corrigido + teste |
+| D2 | P1 | Ajuda: 9 de 12 termos do dia a dia sem resultado (busca por texto exato) | Corrigido + 15 testes |
+| D3 | P2 | Histórico de baixas: uma linha cobria o botão Estornar da outra | Corrigido + fluxo 6 |
+| D4 | P3 | Botão Excluir aparecia desabilitado para Mecânico | Corrigido + fluxo 9 |
+| D5 | P1 | Offline: arquivos no cache não eram servidos (`Vary: Origin`) | Corrigido + `pwa.e2e.ts` |
+| D6 | P2 | Aviso "sem conexão" dependia de `navigator.onLine` | Corrigido + `pwa.e2e.ts` |
+| D7 | P2 | Ao entrar em outra empresa pela URL, nome do usuário ficava o anterior | Corrigido + `admin.e2e.ts` |
+| D8 | P3 | Fatura recém-gerada ia para a página 2 | Corrigido (mais recentes primeiro) |
+| D9 | P2 | axe: contraste em tema claro, gráficos sem nome acessível, `/planos` sem h1 | Corrigido, revalidado com 0 violações |
+
+Abertos: ver `docs/KNOWN_ISSUES.md`.
+
+---
+
+## 7. Fora do escopo desta execução
+
+- Firefox, Safari e Edge: não executados.
+- Dispositivos físicos, teclado virtual, toque real, zoom 200/400%: não executados.
+- Leitores de tela (NVDA, VoiceOver, TalkBack): não executados.
+- Usuários iniciantes reais: não houve participantes. Roteiro em `docs/UX_AUDIT.md`.
+- Lighthouse: não executado.

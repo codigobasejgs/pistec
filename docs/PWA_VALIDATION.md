@@ -1,40 +1,37 @@
-# PISTEC — Matriz de Validação PWA (Progressive Web App)
+# PISTEC — Validação do PWA
 
-**Data de validação:** 15 de outubro de 2026  
-**Status executivo:** **PWA VÁLIDO E HOMOLOGADO EM AMBIENTE DESKTOP E MÓVEL SIMULADO**
+**Data:** 15/10/2026 · **Estado:** APROVADO COM RESSALVAS (critérios técnicos validados no Chrome; instalação real não executada).
 
----
+## 1. Testes executados (`src/pwa.e2e.ts`, build de produção, Chrome headless)
 
-## 1. Verificação Técnica Automatizada (`src/pwa.e2e.ts`)
+| Cenário | Estado |
+|---|---|
+| Manifest: nome, `id`, `start_url=/demonstracao`, `scope=/`, `standalone`, cores, ícones 192/512 e maskable servidos como PNG | APROVADO |
+| Service worker registrado e controlando a página a partir da 2ª carga | APROVADO |
+| Offline: rotas nunca visitadas (Produtos, Financeiro) abrem do precache; dados do IndexedDB disponíveis; aviso "Sem conexão com o servidor" aparece e some ao reconectar | APROVADO |
+| Atualização A→B: aviso "Nova versão disponível", página não recarrega sozinha, dados da versão A preservados, cache antigo removido | APROVADO |
 
-| Cenário de Teste | Critério Técnico Avaliado | Status | Evidência |
-|---|---|:---:|---|
-| **Manifest W3C** | ID imutável `br.com.pistec.app.v1`, `display: standalone`, `start_url: /demonstracao`, escopo `/`, cores institucionais e metatags | **APROVADO** | `manifest.webmanifest`, `pwa.e2e.ts:19` |
-| **Ícones Oficiais (16 a 512px)** | 20 arquivos PNG, resposta HTTP 200, Content-Type `image/png`, variantes maskable com padding central de 80% | **APROVADO** | `public/icons/`, `pwa.e2e.ts:24` |
-| **Service Worker em Produção** | `navigator.serviceWorker.controller` ativo a partir da segunda visita; `sw.js` precacheia 38 chunks sem travar a thread | **APROVADO** | `public/sw.js`, `pwa.e2e.ts:28` |
-| **Navegação Offline** | `context.setOffline(true)`: telas nunca visitadas (`produtos`, `financeiro`) abrem via shell pré-carregado no cache; dados locais do IndexedDB continuam acessíveis | **APROVADO** | `pwa.e2e.ts:32` |
-| **Indicador de Conexão** | Pílula flutuante acessível "Sem conexão com o servidor" surge em offline e some ao restabelecer rede | **APROVADO** | `InstallBanner.tsx`, `pwa.e2e.ts:43` |
-| **Atualização Segura A -> B** | Nova versão servida detectada sem reload forçado; banner discreto com botão "Atualizar agora"; dados locais da versão A preservados intactos | **APROVADO** | `pwa.e2e.ts:51` |
+Arquitetura: `public/sw.js` + plugin de ~20 linhas em `vite.config.ts` que grava a lista de precache e uma versão derivada do conteúdo. Sem Workbox. HTML e chunks ficam na mesma versão até o usuário clicar em "Atualizar agora". Capturas da landing ficam fora do precache.
 
----
+## 2. Salvaguarda de atualização
 
-## 2. Matriz de Compatibilidade por Plataforma
+`useBusyGuard` marca a operação como em andamento quando há modal aberto ou carrinho com itens no PDV; "Atualizar agora" pede confirmação nesses casos. **Implementado, sem teste automatizado do pedido de confirmação.**
 
-| Navegador / Sistema | Suporte a Instalação | Comportamento Implementado | Status |
-|---|---|---|:---:|
-| **Google Chrome (Windows 10/11)** | Suporte nativo completo | Evento `beforeinstallprompt` capturado; abre janela própria standalone | **APROVADO** (validado no Chrome 152 real) |
-| **Microsoft Edge (Windows 10/11)** | Suporte nativo completo | Motor Chromium; banner discreto e ícone na barra de endereço | **APROVADO** (motor Chromium) |
-| **Google Chrome (Android)** | Suporte nativo completo | Banner `InstallBanner.tsx` convida à instalação; ícones 192 e 512 maskable | **APROVADO** (emulação Chromium) |
-| **Samsung Internet (Android)** | Suporte nativo completo | Padrão Web App Manifest W3C | **APROVADO** (especificação compatível) |
-| **Safari (iOS / iPhone)** | Instalação manual assistida | Detecção de iOS exibe modal passo a passo (*Compartilhar -> Adicionar à Tela de Início*) | **APROVADO** (modal implementado) |
-| **Safari (iPadOS / iPad)** | Instalação manual assistida | Touch icon de 180px e instruções dedicadas para tablet | **APROVADO** (modal implementado) |
-| **macOS (Safari / Chrome)** | Standalone ou "Adicionar ao Dock" | Janela dedicada sem barra de URL | **APROVADO** (especificação compatível) |
-| **Mozilla Firefox** | Navegação offline via SW | Precache e IndexedDB funcionais | **APROVADO** (offline nativo) |
+## 3. Matriz por plataforma
 
----
+| Plataforma | Mecanismo no código | Estado |
+|---|---|---|
+| Chrome Windows | `beforeinstallprompt` → botão "Instalar" | NÃO TESTADO (instalação exige navegador com interface) |
+| Edge Windows | Mesmo mecanismo (Chromium) | NÃO TESTADO |
+| Chrome Android | Mesmo mecanismo; ícones maskable | NÃO TESTADO |
+| Safari iPhone/iPad | Sem `beforeinstallprompt`; detecção de iOS/iPadOS abre instruções (Compartilhar → Adicionar à Tela de Início) | NÃO TESTADO (modal implementado, não visto em Safari) |
+| Safari macOS | Adicionar ao Dock (nativo do Safari) | NÃO TESTADO |
+| Firefox | Service worker/offline; Firefox desktop não instala PWAs | NÃO TESTADO |
 
-## 3. Salvaguardas de Atualização (Busy Guard)
+## 4. Como validar manualmente (pendente)
 
-Para proteger o lojista contra perda de dados durante atendimentos:
-1. **Modal aberto (`useBusyGuard`):** Qualquer formulário de cadastro, lançamento ou baixa em edição impede que a atualização automática do Service Worker recarregue a página sem confirmação explícita.
-2. **Carrinho com itens no PDV:** Enquanto houver produtos no carrinho da frente de caixa, o botão de atualização solicita confirmação antes de recarregar.
+1. `npm run build && npm run preview` e abrir em `http://localhost:4173`.
+2. Chrome/Edge: ícone de instalar na barra → abre em janela própria com ícone PISTEC.
+3. Android (Chrome, mesma rede, via HTTPS ou `chrome://inspect` com port-forward): banner "Instalar".
+4. iPhone (Safari, HTTPS): banner "Como instalar" → seguir instruções.
+5. Em cada um: modo avião → reabrir → navegar → voltar online.

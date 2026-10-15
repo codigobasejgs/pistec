@@ -43,7 +43,7 @@ test('tour destaca o elemento real e navega por passos', async ({ page }) => {
   await expect(dialog).toHaveCount(0);
 });
 
-const widths = [360, 390, 430, 768, 1024, 1280, 1440, 1920];
+const widths = [320, 360, 375, 390, 430, 600, 768, 820, 1024, 1280, 1366, 1440, 1920, 2560];
 const routes = ['/', '/planos', '/cadastro', '/loja/moto-prime/dashboard', '/loja/moto-prime/pdv', '/loja/moto-prime/produtos', '/loja/moto-prime/ordens-servico', '/loja/moto-prime/crm', '/loja/moto-prime/agenda', '/loja/moto-prime/whatsapp', '/loja/moto-prime/financeiro', '/loja/moto-prime/contas-receber', '/loja/moto-prime/caixa', '/loja/moto-prime/relatorios', '/loja/moto-prime/personalizacao', '/loja/moto-prime/minha-assinatura'];
 for (const width of widths) {
   test(`sem rolagem horizontal da página em ${width}px`, async ({ page }) => {

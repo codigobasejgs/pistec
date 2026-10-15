@@ -1,4 +1,6 @@
-# Status de Implementação PISTEC — Versão 2.0 Homologada
+# Status de Implementação PISTEC — Versão 2.0
+
+> Números e estados atuais estão em `docs/QA_FINAL_REPORT.md` (15/10/2026: 156 Vitest, 36 cenários Playwright + 14 larguras, axe 0 violações, só Chrome). O restante deste arquivo é o registro da entrega de 14/10.
 
 **Data de atualização:** 14 de outubro de 2026  
 **Status geral:** 100% dos testes unitários e E2E aprovados · Tipagem TypeScript estrita sem erros · ESLint limpo · Build concluído.

@@ -9,7 +9,10 @@ Este documento registra com transparência todas as limitações identificadas, 
 | ID | Severidade | Módulo | Descrição | Impacto | Resolução Prevista |
 |---|:---:|---|---|---|---|
 | **DEF-01** | P2 | `src/ui.tsx:31` | O elemento `<label className="field">` concatena todo o texto de `<option>` filhas no cálculo de nome acessível no Chromium | Não impede o uso por mouse ou toque; quebra seletores semânticos estritos `getByRole('combobox', { name: 'Empresa', exact: true })` | Substituição de `<label>` envoltório por associação via `htmlFor`/`id` gerados por `useId()` na etapa de componentes Radix Form |
-| **DEF-02** | P3 | `src/features/admin/Admin.tsx:328` | Faturas geradas além do tamanho da página (10 itens) são inseridas no fim e aparecem na página 2 sem auto-paginação | O operador precisa navegar para a página 2 ou filtrar pelo nome da empresa/código | Adicionar ordenação padrão decrescente por data e indicador de "Nova fatura criada" com link direto |
+| **DEF-03** | P2 (segurança, só desenvolvimento) | `vitest@3` (devDependency) | `npm audit`: 2 críticas + 1 moderada em `vitest`/`tinypool`/`@vitest/mocker` | Não entra no build publicado (dependências de produção: React, Router, Dexie, Recharts, Radix, Lucide, Zod, read-excel-file). Risco só na máquina de quem roda os testes | Atualizar para `vitest@5` (versão major: revisar config e rodar a suíte) |
+| **DEF-04** | P3 | `@axe-core/playwright` | Instalado nesta auditoria para `scripts/a11y-audit.mjs` | Nenhum (dev) | — |
+
+Resolvido nesta auditoria: faturas recém-geradas agora aparecem no topo (antes iam para a página 2).
 
 ---
 
@@ -32,6 +35,9 @@ Este documento registra com transparência todas as limitações identificadas, 
 1. **Hardware Físico:**
    - Todos os testes móveis foram executados via motores de emulação oficial do Playwright / Chromium (resoluções de 360px a 1920px). A validação em aparelhos iPhone, Galaxy, iPad e tablets físicos requer disponibilização dos dispositivos em laboratório de QA.
 2. **Leitores de Tela:**
-   - A acessibilidade foi homologada a 100% via motor automatizado `axe-core` cobrindo as regras WCAG 2.2 AA. A validação com usuários cegos utilizando NVDA, JAWS ou VoiceOver permanece como etapa de validação humana posterior.
+   - O `axe-core` não acusou violações em 16 cenários. Isso cobre só o que é verificável automaticamente (aprox. um terço dos critérios WCAG); não é conformidade WCAG. NVDA, VoiceOver e TalkBack não foram usados.
+4. **Navegadores:** apenas Chrome. Firefox, Safari e Edge não foram executados.
+5. **Instalação PWA real:** não executada (headless não instala). Critérios técnicos do manifest e do service worker foram validados.
+6. **Lighthouse e zoom 200/400%:** não executados.
 3. **Sessões com Usuários Leigos Reais:**
    - O roteiro de 12 tarefas foi preparado em `docs/UX_AUDIT.md` e está pronto para aplicação moderada com 5 a 8 lojistas e mecânicos reais.
