@@ -7,6 +7,7 @@ import type { OperationalRecord, Sale } from '../../types';
 import { cents, decimal, matches, cashExpected, paymentSummary } from './logic';
 import { FormActions, SearchBox, SelectField, TextField, useErp, useNarrow } from './shared';
 import { Receipt } from './SalesRecords';
+import { useBusyGuard } from '../../pwa';
 
 interface CartLine { productId: string; quantity: number }
 const METHODS = ['Dinheiro', 'Pix', 'Crédito', 'Débito'];
@@ -18,6 +19,7 @@ export default function Pos() {
   const narrow = useNarrow(760);
   const [step, setStep] = useState<Step>('products');
   const [query, setQuery] = useState(''), [customerId, setCustomerId] = useState(''), [cart, setCart] = useState<CartLine[]>([]);
+  useBusyGuard(cart.length > 0); // venda em andamento: atualização do app pede confirmação
   const [discount, setDiscount] = useState('0'), [surcharge, setSurcharge] = useState('0'), [discountMode, setDiscountMode] = useState('value');
   const [payments, setPayments] = useState([{ method: 'Dinheiro', value: '' }]);
   const [receipt, setReceipt] = useState<Sale | null>(null), [cashModal, setCashModal] = useState(false), [opening, setOpening] = useState('0'), [suspendedId, setSuspendedId] = useState('');

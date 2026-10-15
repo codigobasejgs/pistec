@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useState, type ButtonHTMLAttrib
 import * as Dialog from '@radix-ui/react-dialog';
 import { ArrowDownUp, ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Inbox, Loader2, X } from 'lucide-react';
 import { money } from './lib';
+import { useBusyGuard } from './pwa';
 
 const NoticeContext = createContext<(message: string) => void>(() => {});
 export function NoticeProvider({ children }: { children: ReactNode }) {
@@ -24,6 +25,7 @@ export function Stat({ label, value, hint, icon, tone = 'blue', trend, action }:
 }
 export function Badge({ children }: { children: ReactNode }) { const text = String(children); const tone = /Conclu|Ativa|Aprovad|Entregue|Pag[ao]|Pronta|Recebid|Conectad|Quitad|Ganho/.test(text) ? 'success' : /Cancel|Vencid|Suspens|Recusad|Perdid/.test(text) ? 'danger' : /Aguard|Pendente|Aber|Teste|diagnóstico|Parcial/.test(text) ? 'warning' : 'info'; return <span className={`badge ${tone}`}>{children}</span>; }
 export function Modal({ title, open, onClose, children, footer, size = 'md' }: { title: string; open: boolean; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'md' | 'lg' | 'xl' }) {
+  useBusyGuard(open); // formulário aberto: atualização do app pede confirmação
   return <Dialog.Root open={open} onOpenChange={value => { if (!value) onClose(); }}><Dialog.Portal><Dialog.Overlay className="modal-overlay"/><Dialog.Content className={`modal-content size-${size}`} aria-describedby={undefined}><div className="modal-heading"><Dialog.Title>{title}</Dialog.Title><Dialog.Close asChild><button className="icon-button" aria-label="Fechar janela"><X size={20}/></button></Dialog.Close></div><div className="modal-body">{children}</div>{footer && <div className="modal-footer">{footer}</div>}</Dialog.Content></Dialog.Portal></Dialog.Root>;
 }
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) { return <label className={`field ${error ? 'has-error' : ''}`}><span>{label}</span>{children}{error ? <em className="field-error" role="alert">{error}</em> : hint && <small className="field-hint">{hint}</small>}</label>; }

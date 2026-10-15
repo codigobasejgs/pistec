@@ -38,27 +38,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Registro do Service Worker apenas em produção ou localhost
-      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js').then(function(reg) {
-            // Escuta atualizações sem interromper
-            reg.addEventListener('updatefound', function() {
-              var newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', function() {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    window.dispatchEvent(new CustomEvent('pistec:sw-update', { detail: { registration: reg } }));
-                  }
-                });
-              }
-            });
-          }).catch(function(err) {
-            console.debug('ServiceWorker registration optional:', err);
-          });
-        });
-      }
-    </script>
   </body>
 </html>

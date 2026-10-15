@@ -4,9 +4,10 @@ import { X } from 'lucide-react';
 import { useDemo } from '../store';
 import { tours, tourFor } from './tours';
 import type { TourStep } from '../types';
+import { can } from '../domain';
+import { isTourVisible as visible, tourIndex } from './tour-targets';
 
 const findTarget = (step: TourStep) => document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
-function visible(el: HTMLElement | null) { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
 
 /**
  * Tour por componente: destaca o elemento real ([data-tour]), rola até ele e explica.
@@ -19,7 +20,7 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
   const [module, setModule] = useState(() => tourFor(location.pathname, admin));
   const steps = tours[module] ?? [];
   const key = `pistec-tour-${admin ? 'admin' : session.tenantId}-${session.role}-${module}`;
-  const [index, setIndex] = useState(() => { try { return Math.min(Number(localStorage.getItem(key) || 0), Math.max(0, steps.length - 1)); } catch { return 0; } });
+  const [index, setIndex] = useState(() => { try { return tourIndex(localStorage.getItem(key), steps.length); } catch { return 0; } });
   const [rect, setRect] = useState<DOMRect | null>(null); const [missing, setMissing] = useState(false);
   const popover = useRef<HTMLDivElement>(null);
   const step = steps[Math.min(index, steps.length - 1)];
@@ -49,15 +50,15 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
   useLayoutEffect(() => { popover.current?.focus(); }, [index, module]);
   const next = useCallback(() => setIndex(i => i + 1 >= steps.length ? i : i + 1), [steps.length]);
   const prev = useCallback(() => setIndex(i => Math.max(0, i - 1)), []);
-  useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); }; addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey); }, [next, prev, onClose]);
+  useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if ((e.target as HTMLElement)?.matches('input,textarea,select')) return; if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); }; addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey); }, [next, prev, onClose]);
 
-  const modules = Object.keys(tours).filter(m => admin ? m.startsWith('admin') : !m.startsWith('admin'));
+  const modules = Object.keys(tours).filter(m => admin ? m.startsWith('admin') : !m.startsWith('admin') && can(session.role, m, 'visualizar'));
   const last = index >= steps.length - 1;
   // Posição do popover: abaixo do alvo, acima se não couber; no mobile, fixo no rodapé.
   const mobile = innerWidth < 640; const pad = 8;
   const pos = rect && !mobile ? (() => { const w = 360, h = 230; const top = rect.bottom + 14 + h < innerHeight ? rect.bottom + 14 : Math.max(12, rect.top - h - 14); const left = Math.min(Math.max(12, rect.left), innerWidth - w - 12); return { top, left, width: w }; })() : undefined;
 
-  return <div className="tour-layer" role="dialog" aria-modal="true" aria-label="Tour guiado">
+  return <div className="tour-layer" role="dialog" aria-modal="false" aria-label="Tour guiado">
     {rect ? <div className="tour-spotlight" style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }}/> : <div className="tour-dim"/>}
     <div ref={popover} tabIndex={-1} className={`tour-popover ${mobile || !rect ? 'is-docked' : ''}`} style={pos}>
       <div className="tour-head"><select aria-label="Módulo do tour" value={module} onChange={e => { setModule(e.target.value); setIndex(0); }}>{modules.map(m => <option key={m} value={m}>{tours[m][0]?.title ? `Tour: ${labelOf(m)}` : m}</option>)}</select><button className="icon-button" aria-label="Encerrar tour" onClick={onClose}><X size={16}/></button></div>

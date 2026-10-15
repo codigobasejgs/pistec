@@ -199,12 +199,12 @@ export default function WhatsApp() {
             </div>
 
             {/* Respostas rápidas */}
-            <div style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6, overflowX: 'auto' }}>
+            <div data-tour="whatsapp-quick-replies" style={{ padding: '6px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6, overflowX: 'auto' }}>
               {QUICK_REPLIES.map((qr, i) => <button key={i} type="button" className="btn ghost" style={{ fontSize: '.75rem', padding: '3px 8px', whiteSpace: 'nowrap' }} onClick={() => setBody(qr)}>{qr.slice(0, 36)}…</button>)}
             </div>
 
             <form className="chat-compose" onSubmit={send}>
-              <div className="toolbar">
+              <div className="toolbar" data-tour="whatsapp-compose-type">
                 <SelectField label="Tipo" value={messageType} onChange={v => setMessageType(v as typeof messageType)}>
                   <option value="outbound">Mensagem enviada (simulada)</option>
                   <option value="inbound">Mensagem recebida (simulada)</option>

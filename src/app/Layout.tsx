@@ -7,7 +7,6 @@ import { nav, adminNav } from '../navigation';
 import { Modal, useNotice } from '../ui';
 import type { Role, Theme } from '../types';
 import Tour from './Tour';
-import InstallBanner from './InstallBanner';
 
 export default function Layout({ admin = false }: { admin?: boolean }) {
   const { state, session, setSession, mutate, logout } = useDemo();
@@ -17,7 +16,7 @@ export default function Layout({ admin = false }: { admin?: boolean }) {
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   useEffect(() => { const media = matchMedia('(prefers-color-scheme: dark)'); const handler = () => setSystemDark(media.matches); media.addEventListener('change', handler); return () => media.removeEventListener('change', handler); }, []);
   useEffect(() => { const handler = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(v => !v); } if (e.key === 'Escape') { setMobile(false); setAccount(false); } }; addEventListener('keydown', handler); return () => removeEventListener('keydown', handler); }, []);
-  useEffect(() => { if (tenant && tenant.id !== session.tenantId) setSession({ ...session, tenantId: tenant.id, branchId: state.branches.find(b => b.tenantId === tenant.id && b.active)?.id ?? '', admin: false }); }, [tenant, session, setSession, state.branches]);
+  useEffect(() => { if (tenant && tenant.id !== session.tenantId) setSession({ ...session, tenantId: tenant.id, branchId: state.branches.find(b => b.tenantId === tenant.id && b.active)?.id ?? '', name: session.role === 'Proprietário' ? tenant.owner : session.name, admin: false }); }, [tenant, session, setSession, state.branches]);
   useEffect(() => { setMobile(false); setAccount(false); }, [location.pathname]);
   if (admin && !session.admin) return <Navigate to="/login" replace/>;
   if (!admin && !tenant) return <div className="error-page"><h1>Empresa não encontrada</h1><p>Este endereço não corresponde a uma empresa demonstrativa.</p><Link className="btn primary" to="/demonstracao">Escolher empresa</Link></div>;
@@ -56,7 +55,6 @@ export default function Layout({ admin = false }: { admin?: boolean }) {
     <Modal title="Busca universal" open={searchOpen} onClose={() => setSearchOpen(false)}><div className="command-input"><Command size={20}/><input autoFocus placeholder="Produtos, clientes, veículos, OS ou módulos..." aria-label="Pesquisar no sistema" value={query} onChange={e => setQuery(e.target.value)}/></div><div className="command-results">{searchItems.map(item => <Link key={item.id} to={item.to} onClick={() => { setSearchOpen(false); setQuery(''); }}><Search size={16}/><span>{item.label}</span><small>{item.type}</small></Link>)}{!searchItems.length && <p>Nenhum resultado nesta empresa.</p>}</div></Modal>
     <Modal title="Ambiente demonstrativo" open={demoInfo} onClose={() => setDemoInfo(false)} footer={<><button className="btn" onClick={() => setDemoInfo(false)}>Entendi</button><button className="btn primary" onClick={() => { setDemoInfo(false); setTour(true); }}>Iniciar tour guiado</button></>}><ul className="demo-list"><li>Dados fictícios, salvos apenas neste navegador (IndexedDB).</li><li>Login, perfis e Super Admin são demonstrativos; não há autenticação real.</li><li>WhatsApp, Asaas, InfinitePay e CEP são simulados: nada é enviado ou cobrado.</li><li>Sem emissão fiscal. Recibos não têm validade fiscal.</li></ul></Modal>
     {tour && <Tour admin={admin} onClose={() => setTour(false)}/>}
-    <InstallBanner/>
     <button className="mobile-close" aria-label="Fechar navegação" onClick={() => setMobile(false)}><X/></button>
   </div>;
 }

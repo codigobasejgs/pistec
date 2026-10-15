@@ -262,7 +262,7 @@ function Invoices({ finance = false }: { finance?: boolean }) {
   const tab = new URLSearchParams(location.search).get('aba') || 'faturas';
   const [search, setSearch] = useState(''); const [status, setStatus] = useState(''); const [open, setOpen] = useState(false);
   const tenantName = (id: string) => state.tenants.find(t => t.id === id)?.name ?? 'Removida';
-  const rows = state.invoices.filter(i => (!status || invoiceStatus(i, today()) === status) && matches([tenantName(i.tenantId), i.reference, i.provider, i.couponCode], search));
+  const rows = [...state.invoices].reverse().filter(i => (!status || invoiceStatus(i, today()) === status) && matches([tenantName(i.tenantId), i.reference, i.provider, i.couponCode], search));
 
   function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const f = new FormData(event.currentTarget);

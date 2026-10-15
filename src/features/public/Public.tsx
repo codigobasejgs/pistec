@@ -48,7 +48,7 @@ function Pricing({ compact = false }: { compact?: boolean }) {
   return <section className="pub-section" id="planos">
     <div className="pub-section-heading">
       <span className="pub-eyebrow">CRESÇA NO SEU RITMO</span>
-      <h2>O próximo nível começa<br/>com o plano certo.</h2>
+      {compact ? <h2>O próximo nível começa<br/>com o plano certo.</h2> : <h1>O próximo nível começa<br/>com o plano certo.</h1>}
       <p>Valores demonstrativos alinhados ao catálogo da plataforma. Sem cobrança real nesta versão.</p>
     </div>
     <div className="pub-periods" aria-label="Periodicidade">
