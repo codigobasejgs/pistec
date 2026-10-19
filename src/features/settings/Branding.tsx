@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { Monitor, Palette, RotateCcw, Save, Smartphone, Undo2, Upload, LayoutDashboard, Package, Boxes, Wallet } from 'lucide-react';
-import { useDemo } from '../../store';
+import { rpc, useDemo } from '../../store';
 import { can } from '../../domain';
 import { imageData } from '../../lib';
 import { Badge, Field, PageHeader, Panel, useNotice } from '../../ui';
@@ -24,7 +24,7 @@ export function contrast(a: string, b = '#ffffff') {
 }
 
 export default function BrandingPage() {
-  const { state, session, mutate } = useDemo(); const notice = useNotice();
+  const { state, session, perform } = useDemo(); const notice = useNotice();
   const tenant = state.tenants.find(t => t.id === session.tenantId)!;
   const [branding, setBranding] = useState<Branding>(() => structuredClone(tenant.branding));
   const [name, setName] = useState(tenant.name);
@@ -38,7 +38,7 @@ export default function BrandingPage() {
     try {
       if (!name.trim()) throw new Error('Informe o nome fantasia.');
       // Isolamento: grava somente no tenant da sessão; Super Admin nunca lê esta marca.
-      await mutate(s => { if (!can(session.role, 'personalizacao', 'editar')) throw new Error('Perfil sem permissão.'); const t = s.tenants.find(t => t.id === tenant.id)!; t.branding = structuredClone(branding); t.name = name.trim().slice(0, 120); });
+      await perform(s => { if (!can(session.role, 'personalizacao', 'editar')) throw new Error('Perfil sem permissão.'); const t = s.tenants.find(t => t.id === tenant.id)!; t.branding = structuredClone(branding); t.name = name.trim().slice(0, 120); }, rpc('update_branding', { p_tenant: tenant.id, p_branding: branding, p_name: name.trim() }));
       notice('Identidade salva somente nesta empresa.');
     } catch (e) { notice((e as Error).message); } finally { setPending(false); }
   };

@@ -172,15 +172,24 @@ export function createDemoStore(options: StoreOptions = {}) {
 }
 
 type DemoStore = ReturnType<typeof createDemoStore>;
+/** Chamada de RPC Supabase equivalente à operação demo. Só é usada no modo real. */
+export interface Remote { fn: string; args: Record<string, unknown> }
+export const rpc = (fn: string, args: Record<string, unknown>): Remote => ({ fn, args });
 export interface DemoContextValue extends StoreView {
+  /** 'demo' = IndexedDB local; 'real' = Supabase (rotas /app). */
+  mode: 'demo' | 'real';
+  /** Prefixo das rotas internas: '' na demo, '/app' no modo real. */
+  prefix: string;
   session: Session;
   setSession(next: Session): void;
   mutate(action: (draft: DemoState) => void): Promise<void>;
+  /** Executa a operação: demo aplica `demo` no snapshot local; real chama `remote` no servidor e recarrega. */
+  perform<T>(demo: (draft: DemoState) => T, remote?: Remote): Promise<T>;
   reset(): Promise<void>;
   setFailNext(value: boolean): void;
   logout(): void;
 }
-const DemoContext = createContext<DemoContextValue | null>(null);
+export const DemoContext = createContext<DemoContextValue | null>(null);
 let defaultStore: DemoStore | undefined;
 
 export function DemoProvider({ children, store }: { children: ReactNode; store?: DemoStore }) {
@@ -207,7 +216,12 @@ export function DemoProvider({ children, store }: { children: ReactNode; store?:
   }, [view.state, view.initialized, session]);
 
   const value = useMemo<DemoContextValue>(() => ({
-    ...view, session,
+    ...view, session, mode: 'demo', prefix: '',
+    async perform<T>(demo: (draft: DemoState) => T) {
+      let result: T | undefined;
+      await controller.mutate(draft => { result = demo(draft); });
+      return result as T;
+    },
     setSession(next) {
       // Lê o snapshot atual: logo após um mutate, o `view` deste render ainda é o anterior.
       const current = controller.getSnapshot().state;

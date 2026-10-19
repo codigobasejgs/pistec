@@ -6,6 +6,7 @@ import { Badge, Button, DataTable, Empty, Modal, PageHeader, Panel, Stat } from 
 import type { ImportReport, Product, ProductImportRow } from '../../types';
 import { cents, decimal, guessMapping, IMPORT_FIELDS, IMPORT_TEMPLATE, mapImportRows, matches, parseCsv, sheetToRecords, type ImportField, type ImportMapping } from './logic';
 import { ExportButton, SearchBox, SelectField, TextField, useErp, useSearchQuery } from './shared';
+import { rpc } from '../../store';
 
 type Strategy = 'create' | 'update' | 'upsert';
 
@@ -52,7 +53,7 @@ export default function Products() {
       if (costError || priceError) throw new Error('Revise os valores monetários informados.');
       const product = { ...edit, name: edit.name.trim(), sku: edit.sku.trim(), cost: costCents, price: priceCents };
       if (!product.name || !product.sku || !Number.isInteger(product.min) || !Number.isInteger(product.max) || product.min < 0 || (product.max > 0 && product.max < product.min)) throw new Error('Nome e SKU obrigatórios; estoque mínimo/máximo devem ser inteiros válidos.');
-      const ok = await run(draft => saveProduct(draft, product), 'Produto salvo.', products.some(row => row.id === edit.id) ? 'editar' : 'cadastrar');
+      const ok = await run(draft => saveProduct(draft, product), 'Produto salvo.', products.some(row => row.id === edit.id) ? 'editar' : 'cadastrar', rpc('save_product', { p_tenant: session.tenantId, p: product }));
       if (ok) setEdit(null);
     } catch (error) { notice(error instanceof Error ? error.message : 'Produto inválido.'); }
   }
@@ -64,7 +65,7 @@ export default function Products() {
       if (linked) throw new Error('Produto possui saldo ou histórico. Utilize Arquivar.');
       draft.products = draft.products.filter(row => row.id !== product.id || row.tenantId !== session.tenantId);
       draft.balances = draft.balances.filter(row => row.productId !== product.id || row.tenantId !== session.tenantId);
-    }, 'Produto excluído.', 'excluir');
+    }, 'Produto excluído.', 'excluir', rpc('delete_product', { p_tenant: session.tenantId, p_id: product.id }));
   }
 
   async function handleFile(file?: File) {
@@ -104,11 +105,9 @@ export default function Products() {
 
   async function confirmImport() {
     if (!batch || !batch.valid.length) return;
-    let resultReport: ImportReport | null = null;
-    const ok = await run(draft => {
-      resultReport = importProducts(draft, session.tenantId, batch.valid, batch.strategy);
-    }, 'Importação concluída.', 'cadastrar');
-    if (ok && resultReport) {
+    const ok = await run(draft => importProducts(draft, session.tenantId, batch.valid, batch.strategy), 'Importação concluída.', 'cadastrar', rpc('import_products', { p_tenant: session.tenantId, p_rows: batch.valid, p_strategy: batch.strategy }));
+    const resultReport = ok ? ok.value as ImportReport : null;
+    if (resultReport) {
       // Mescla erros de mapeamento com erros da aplicação de regras no domínio
       const mergedErrors = [...batch.errors, ...(resultReport as ImportReport).errors];
       setReport({ ...(resultReport as ImportReport), errors: mergedErrors });
@@ -143,7 +142,7 @@ export default function Products() {
         { key: 'price', label: 'Preço', render: (product: Product) => money(product.price) },
         { key: 'stock', label: 'Estoque', render: (product: Product) => stock(product.id) },
         { key: 'active', label: 'Status', render: (product: Product) => <Badge>{product.active ? 'Ativo' : 'Arquivado'}</Badge> },
-        { key: 'actions', label: 'Ações', render: (product: Product) => <div className="toolbar"><button className="btn ghost" aria-label={`Detalhes de ${product.name}`} onClick={() => setDetail(product)}><Eye size={16} /></button><button className="btn ghost" aria-label={`Editar ${product.name}`} disabled={pending || !allowed('editar')} onClick={() => openEdit(product)}><Edit size={16} /></button><button className="btn ghost" aria-label={`Duplicar ${product.name}`} disabled={!allowed('cadastrar')} onClick={() => openEdit({ ...product, id: uid(), name: `${product.name} (cópia)`, sku: '', barcode: '' })}><Copy size={16} /></button><button className="btn ghost" aria-label={`${product.active ? 'Arquivar' : 'Restaurar'} ${product.name}`} disabled={pending || !allowed('editar')} onClick={() => { if (window.confirm(`${product.active ? 'Arquivar' : 'Restaurar'} ${product.name}?`)) void run(draft => { const current = draft.products.find(row => row.id === product.id && row.tenantId === session.tenantId); if (!current) throw new Error('Produto não encontrado.'); saveProduct(draft, { ...current, active: !current.active }); }); }}><Archive size={16} /></button>{allowed('excluir') && <button className="btn danger" aria-label={`Excluir ${product.name}`} disabled={pending} onClick={() => void remove(product)}><Trash2 size={16} /></button>}</div> },
+        { key: 'actions', label: 'Ações', render: (product: Product) => <div className="toolbar"><button className="btn ghost" aria-label={`Detalhes de ${product.name}`} onClick={() => setDetail(product)}><Eye size={16} /></button><button className="btn ghost" aria-label={`Editar ${product.name}`} disabled={pending || !allowed('editar')} onClick={() => openEdit(product)}><Edit size={16} /></button><button className="btn ghost" aria-label={`Duplicar ${product.name}`} disabled={!allowed('cadastrar')} onClick={() => openEdit({ ...product, id: uid(), name: `${product.name} (cópia)`, sku: '', barcode: '' })}><Copy size={16} /></button><button className="btn ghost" aria-label={`${product.active ? 'Arquivar' : 'Restaurar'} ${product.name}`} disabled={pending || !allowed('editar')} onClick={() => { if (window.confirm(`${product.active ? 'Arquivar' : 'Restaurar'} ${product.name}?`)) void run(draft => { const current = draft.products.find(row => row.id === product.id && row.tenantId === session.tenantId); if (!current) throw new Error('Produto não encontrado.'); saveProduct(draft, { ...current, active: !current.active }); }, 'Alterações salvas.', 'editar', rpc('save_product', { p_tenant: session.tenantId, p: { ...product, active: !product.active } })); }}><Archive size={16} /></button>{allowed('excluir') && <button className="btn danger" aria-label={`Excluir ${product.name}`} disabled={pending} onClick={() => void remove(product)}><Trash2 size={16} /></button>}</div> },
       ]} /> : <Empty text="Nenhum produto encontrado. Cadastre um produto ou ajuste os filtros." />}</Panel>
 
     <Modal title={edit && products.some(product => product.id === edit.id) ? 'Editar produto' : 'Novo produto'} size="lg" open={!!edit} onClose={() => !pending && setEdit(null)}>{edit && <form className="stack" onSubmit={save}>

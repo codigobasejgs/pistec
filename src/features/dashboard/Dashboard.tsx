@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
 import { ArrowDown, ArrowUp, ArrowUpRight, Boxes, Building2, Crown, Package, Plus, RotateCcw, ShoppingCart, TrendingUp, Wrench, Zap, Users, Truck, FileText, Wallet, Settings2, CalendarDays } from 'lucide-react';
-import { useDemo } from '../../store';
+import { rpc, useDemo } from '../../store';
 import { entryBalance } from '../../domain';
 import { money, date, today } from '../../lib';
 import { Badge, ChartTooltip, DataTable, Modal, Panel, Stat, useNotice } from '../../ui';
@@ -19,7 +19,7 @@ function widgetLayout(saved: string[]): WidgetKey[] {
 }
 
 export default function Dashboard() {
-  const { state, session, mutate } = useDemo(); const navigate = useNavigate(); const notice = useNotice();
+  const { state, session, perform } = useDemo(); const navigate = useNavigate(); const notice = useNotice();
   const tenant = state.tenants.find(t => t.id === session.tenantId)!; const plan = state.plans.find(p => p.id === tenant.planId); const base = `/loja/${tenant.slug}`;
   const branch = state.branches.find(b => b.id === session.branchId);
   const [days, setDays] = useState(30); const [custom, setCustom] = useState(false); const [from, setFrom] = useState(today()); const [to, setTo] = useState(today()); const [table, setTable] = useState(false); const [widgets, setWidgets] = useState(false); const [saving, setSaving] = useState(false);
@@ -48,7 +48,7 @@ export default function Dashboard() {
   const totalItems = mix.reduce((n, c) => n + c.value, 0); const costs = monthlySales.reduce((n, s) => n + s.items.reduce((v, i) => v + i.cost * i.quantity, 0), 0);
   const finances = scope(state.finances).filter(f => !f.cancelled); const outstanding = (type: string) => finances.filter(f => f.type === type).reduce((n, f) => n + entryBalance(f), 0);
   const layout = widgetLayout(tenant.branding.widgets);
-  const saveLayout = async (next: WidgetKey[]) => { setSaving(true); try { await mutate(s => { s.tenants.find(t => t.id === tenant.id)!.branding.widgets = next.length ? next : ['none']; }); } catch (e) { notice((e as Error).message); } finally { setSaving(false); } };
+  const saveLayout = async (next: WidgetKey[]) => { setSaving(true); try { await perform(s => { s.tenants.find(t => t.id === tenant.id)!.branding.widgets = next.length ? next : ['none']; }, rpc('update_branding', { p_tenant: tenant.id, p_branding: { widgets: next.length ? next : ['none'] }, p_scope: 'prefs' })); } catch (e) { notice((e as Error).message); } finally { setSaving(false); } };
   const quick = [['pdv', 'Nova venda', ShoppingCart], ['ordens-servico', 'Nova ordem de serviço', Wrench], ['produtos', 'Cadastrar produto', Package], ['clientes', 'Cadastrar cliente', Users], ['compras', 'Lançar compra', Truck], ['estoque', 'Entrada no estoque', Boxes], ['orcamentos', 'Novo orçamento', FileText], ['caixa', 'Abrir caixa', Wallet]] as const;
   const late = active.filter(o => o.fields.deliveryDate && o.fields.deliveryDate < day);
   const todayAgenda = scope(state.records).filter(r => r.kind === 'agenda' && r.fields.scheduledDate === day && r.status !== 'Cancelado');

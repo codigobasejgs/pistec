@@ -1,0 +1,15 @@
+node_modules
+dist
+test-results
+playwright-report
+references
+supabase
+scripts
+docs/evidence
+.env
+.env.*
+!.env.example
+*.mp4
+/*.png
+writing-block.md
+backend-results.json

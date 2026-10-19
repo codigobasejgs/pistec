@@ -1,7 +1,7 @@
 import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, Download, Search } from 'lucide-react';
-import { useDemo } from '../../store';
+import { useDemo, type Remote } from '../../store';
 import { can } from '../../domain';
 import { exportCsv, money } from '../../lib';
 import { Field, useNotice } from '../../ui';
@@ -14,11 +14,13 @@ export function useErp(module: string) {
   const [pending, setPending] = useState(false);
   const lock = useRef(false);
   const allowed = (action = 'visualizar') => can(demo.session.role, module, action);
-  async function run(action: (draft: DemoState) => void, message = 'Alterações salvas.', permission = 'editar') {
+  /** remote: RPC equivalente no modo real (o servidor revalida permissão, plano e tenant). */
+  /** Retorna false em erro ou { value } com o resultado (demo: retorno da ação; real: retorno da RPC). */
+  async function run<T = unknown>(action: (draft: DemoState) => T, message = 'Alterações salvas.', permission = 'editar', remote?: Remote): Promise<false | { value: T }> {
     if (lock.current) return false;
     if (!allowed(permission)) { notice('Seu perfil não permite esta ação.'); return false; }
     lock.current = true; setPending(true);
-    try { await demo.mutate(action); notice(message); return true; }
+    try { const value = await demo.perform(action, remote); notice(message); return { value }; }
     catch (error) { notice(error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.'); return false; }
     finally { lock.current = false; setPending(false); }
   }

@@ -7,6 +7,7 @@ import { Badge, Button, DataTable, Empty, Modal, PageHeader, Panel, Stat } from 
 import type { CashRegister, FinancialEntry } from '../../types';
 import { cashExpected, cents, decimal, inPeriod, matches } from './logic';
 import { ExportButton, FormActions, SearchBox, SelectField, TextField, useErp } from './shared';
+import { rpc } from '../../store';
 
 const METHODS = ['Pix', 'Dinheiro', 'Transferência', 'Crédito', 'Débito', 'Boleto'];
 const STATUSES = ['Em aberto', 'Parcialmente pago', 'Vencido', 'Quitado', 'Cancelado'];
@@ -22,6 +23,7 @@ export default function Finance() {
   const [payId, setPayId] = useState(''), [payAmount, setPayAmount] = useState(''), [method, setMethod] = useState('Pix'), [payDate, setPayDate] = useState(now), [payNote, setPayNote] = useState('');
   const [historyId, setHistoryId] = useState(''), [actionReason, setActionReason] = useState('');
   const payRequest = useRef(uid());
+  const cashRequest = useRef(uid());
   const entries = state.finances.filter(entry => !cashOnly && entry.tenantId === session.tenantId && entry.branchId === session.branchId);
   const statusOf = (entry: FinancialEntry) => entryStatus(entry, now);
   const rows = entries.filter(entry => { const current = statusOf(entry); return matches(query, entry.description, entry.category, entry.reference) && (!type || entry.type === type) && (!status || (status === 'open' ? ['Em aberto', 'Parcialmente pago', 'Vencido'].includes(current) : current === status)) && inPeriod(entry.dueDate, start, end); });
@@ -49,7 +51,7 @@ export default function Finance() {
         if (index >= 0 && (entryPaid(draft.finances[index]) > 0 || draft.finances[index].cancelled || draft.finances[index].reference)) throw new Error('Lançamento com baixas, cancelado ou vinculado não pode ser editado.');
         const entry = { ...edit, amount, description: edit.description.trim(), category: edit.category.trim() };
         if (index >= 0) draft.finances[index] = entry; else draft.finances.push(entry);
-      }, 'Lançamento salvo.', entries.some(entry => entry.id === edit.id) ? 'editar' : 'cadastrar')) setEdit(null);
+      }, 'Lançamento salvo.', entries.some(entry => entry.id === edit.id) ? 'editar' : 'cadastrar', rpc('save_entry', { p_tenant: session.tenantId, p: { id: edit.id, branchId: session.branchId, type: edit.type, category: edit.category.trim(), description: edit.description.trim(), amount, dueDate: edit.dueDate } }))) setEdit(null);
     } catch (error) { notice(error instanceof Error ? error.message : 'Valor inválido.'); }
   }
   function openPay(entry: FinancialEntry) { setPayId(entry.id); setPayAmount(decimal(entryBalance(entry))); setMethod('Pix'); setPayDate(now); setPayNote(''); payRequest.current = uid(); }
@@ -58,19 +60,19 @@ export default function Finance() {
   async function settle(event: FormEvent) {
     event.preventDefault(); if (!pay || payError || payCents === null) return;
     const entryId = pay.id, amount = payCents, partial = amount < entryBalance(pay);
-    if (await run(draft => settleEntry(draft, session.tenantId, entryId, { amount, method, date: payDate, user: session.name, note: payNote.trim(), requestId: payRequest.current }), partial ? 'Baixa parcial registrada.' : pay.type === 'Receita' ? 'Recebimento quitado.' : 'Pagamento quitado.')) setPayId('');
+    if (await run(draft => settleEntry(draft, session.tenantId, entryId, { amount, method, date: payDate, user: session.name, note: payNote.trim(), requestId: payRequest.current }), partial ? 'Baixa parcial registrada.' : pay.type === 'Receita' ? 'Recebimento quitado.' : 'Pagamento quitado.', 'editar', rpc('settle_entry', { p_tenant: session.tenantId, p_entry: entryId, p: { amount, method, date: payDate, note: payNote.trim(), requestId: payRequest.current } }))) setPayId('');
   }
   async function reverse(settlementId: string) {
     if (!history) return;
     if (!actionReason.trim()) { notice('Informe o motivo do estorno.'); return; }
     if (!window.confirm('Estornar esta baixa? O saldo volta a ficar em aberto.')) return;
-    if (await run(draft => reverseSettlement(draft, session.tenantId, history.id, settlementId, session.name, actionReason.trim()), 'Baixa estornada.')) setActionReason('');
+    if (await run(draft => reverseSettlement(draft, session.tenantId, history.id, settlementId, session.name, actionReason.trim()), 'Baixa estornada.', 'editar', rpc('reverse_settlement', { p_tenant: session.tenantId, p_entry: history.id, p_settlement: settlementId, p_reason: actionReason.trim() }))) setActionReason('');
   }
   async function cancel() {
     if (!history) return;
     if (!actionReason.trim()) { notice('Informe o motivo do cancelamento.'); return; }
     if (!window.confirm('Cancelar este lançamento? A ação fica registrada no histórico.')) return;
-    if (await run(draft => cancelEntry(draft, session.tenantId, history.id, session.name, actionReason.trim()), 'Lançamento cancelado.', 'cancelar')) setActionReason('');
+    if (await run(draft => cancelEntry(draft, session.tenantId, history.id, session.name, actionReason.trim()), 'Lançamento cancelado.', 'cancelar', rpc('cancel_entry', { p_tenant: session.tenantId, p_entry: history.id, p_reason: actionReason.trim() }))) setActionReason('');
   }
 
   const counted = tryCents(cashValue);
@@ -96,7 +98,10 @@ export default function Finance() {
             draft.audit.push({ id: uid(), tenantId: session.tenantId, date: new Date().toISOString(), action: `${cashAction === 'withdraw' ? 'Sangria' : 'Suprimento'} ${money(amount)}: ${reason.trim()}` });
           }
         }
-      }, cashAction === 'close' ? 'Caixa fechado. Fechamento registrado no histórico.' : 'Caixa atualizado.')) { setCashAction(''); setCashValue('0'); setReason(''); }
+      }, cashAction === 'close' ? 'Caixa fechado. Fechamento registrado no histórico.' : 'Caixa atualizado.', 'editar',
+        cashAction === 'open' ? rpc('open_cash', { p_tenant: session.tenantId, p_branch: session.branchId, p_opening: amount })
+        : cashAction === 'close' ? rpc('close_cash', { p_tenant: session.tenantId, p_cash: cash?.id, p_counted: amount, p_reason: reason.trim() || null })
+        : rpc('cash_movement', { p_tenant: session.tenantId, p_cash: cash?.id, p_amount: cashAction === 'withdraw' ? -amount : amount, p_reason: `${cashAction === 'withdraw' ? 'Sangria' : 'Suprimento'}: ${reason.trim()}`, p_request_id: cashRequest.current }))) { setCashAction(''); setCashValue('0'); setReason(''); cashRequest.current = uid(); }
     } catch (error) { notice(error instanceof Error ? error.message : 'Valor inválido.'); }
   }
   const set = (key: keyof FinancialEntry, value: string) => setEdit(current => current ? { ...current, [key]: value } : current);

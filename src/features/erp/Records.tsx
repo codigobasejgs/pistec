@@ -8,6 +8,7 @@ import type { OperationalRecord } from '../../types';
 import CustomerRecords from './CustomerRecords';
 import SalesRecords from './SalesRecords';
 import { configs } from './record-config';
+import { rpc } from '../../store';
 import { cents, decimal, inPeriod, matches, sumItems } from './logic';
 import { ExportButton, FormActions, ItemEditor, SearchBox, SelectField, TextField, useErp, useSearchQuery } from './shared';
 
@@ -106,7 +107,7 @@ function DomainRecords({ kind }: { kind: string }) {
             draft.branches.push({ id: record.id, tenantId: session.tenantId, name: record.title, active: true });
           }
         }
-      }, 'Registro salvo.', exists ? 'editar' : 'cadastrar')) setEdit(null);
+      }, 'Registro salvo.', exists ? 'editar' : 'cadastrar', rpc('save_record', { p_tenant: session.tenantId, p: { ...record, status: exists ? record.status : undefined } }))) setEdit(null);
     } catch (error) { notice(error instanceof Error ? error.message : 'Registro inválido.'); }
   }
 
@@ -133,7 +134,10 @@ function DomainRecords({ kind }: { kind: string }) {
         if (next === 'Inativa' && draft.cashRegisters.some(c => c.tenantId === session.tenantId && c.branchId === record.id && !c.closedAt)) throw new Error('Feche o caixa da filial antes de desativá-la.');
         if (branch) branch.active = next === 'Ativa';
       }
-    }, 'Status atualizado.', next.startsWith('Cancel') || next === 'Perdido' ? 'cancelar' : 'editar');
+    }, 'Status atualizado.', next.startsWith('Cancel') || next === 'Perdido' ? 'cancelar' : 'editar',
+      kind === 'compras' && next === 'Recebida' ? rpc('receive_purchase', { p_tenant: session.tenantId, p_id: record.id })
+      : kind === 'filiais' ? rpc('transition_branch', { p_tenant: session.tenantId, p_id: record.id, p_active: next === 'Ativa' })
+      : rpc('transition_record', { p_tenant: session.tenantId, p_id: record.id, p_status: next, p_reason: reasonText || null }));
   }
 
   async function remove(record: OperationalRecord) {
@@ -143,13 +147,13 @@ function DomainRecords({ kind }: { kind: string }) {
       if (!current || readonly(current) || ['ordens-servico', 'compras', 'filiais'].includes(kind)) throw new Error('Registro protegido; utilize a transição de status.');
       if (draft.records.some(row => row.tenantId === session.tenantId && (Object.values(row.fields).includes(record.id) || row.convertedId === record.id))) throw new Error('Registro vinculado a outro atendimento.');
       draft.records = draft.records.filter(row => row.id !== record.id || row.tenantId !== session.tenantId);
-    }, 'Registro excluído.', 'excluir');
+    }, 'Registro excluído.', 'excluir', rpc('delete_record', { p_tenant: session.tenantId, p_id: record.id }));
   }
 
   async function convert(record: OperationalRecord, targetOverride?: string) {
     const target = targetOverride || (kind === 'orcamentos' ? 'ordens-servico' : 'orcamentos');
     if (!window.confirm(`Converter "${record.title}" para ${target === 'ordens-servico' ? 'ordem de serviço' : 'orçamento'}?`)) return;
-    await run(draft => convertRecord(draft, session.tenantId, record.id, target), 'Conversão concluída. O vínculo foi preservado.', 'cadastrar');
+    await run(draft => convertRecord(draft, session.tenantId, record.id, target), 'Conversão concluída. O vínculo foi preservado.', 'cadastrar', rpc('convert_record', { p_tenant: session.tenantId, p_id: record.id, p_target: target }));
   }
 
   async function simulate(record: OperationalRecord) {
@@ -159,7 +163,7 @@ function DomainRecords({ kind }: { kind: string }) {
       const now = new Date().toISOString();
       draft.records.push({ ...fresh(), id: uid(), kind: 'notificacoes', title: `Simulação: ${current.title}`, status: 'Não lida', date: now, fields: { priority: 'Normal', message: current.fields.message, sourceId: current.id, simulation: 'true' }, history: [{ date: now, text: 'Simulação local. Nenhuma mensagem externa enviada.' }] });
       current.history.push({ date: now, text: `Simulação manual por ${session.name}. Notificação local criada; nenhum envio externo.` });
-    }, 'Simulação registrada em Notificações. Nenhum envio externo.');
+    }, 'Simulação registrada em Notificações. Nenhum envio externo.', 'editar', rpc('simulate_automation', { p_tenant: session.tenantId, p_id: record.id }));
   }
 
   // Detecta conflito de horário na agenda: mesmo responsável, mesma data e horários com overlap
@@ -431,7 +435,7 @@ function DomainRecords({ kind }: { kind: string }) {
       {detail.convertedId && <p>Convertido para: {tenantRecords.find(record => record.id === detail.convertedId)?.title || detail.convertedId}</p>}
       <h4>Histórico</h4>
       {detail.history.length ? <ol>{detail.history.map((entry, index) => <li key={`${entry.date}-${index}`}>{date(entry.date)} · {entry.text}</li>)}</ol> : <p className="muted">Sem eventos anteriores.</p>}
-      <form className="stack" onSubmit={async event => { event.preventDefault(); if (!note.trim()) return; if (await run(draft => { const current = draft.records.find(record => record.id === detail.id && record.tenantId === session.tenantId); if (!current) { if (kind === 'filiais') { draft.records.push({ ...structuredClone(detail), history: [{ date: new Date().toISOString(), text: `${session.name}: ${note.trim()}` }] }); return; } throw new Error('Registro não encontrado.'); } current.history.push({ date: new Date().toISOString(), text: `${session.name}: ${note.trim()}` }); }, 'Nota adicionada.')) setNote(''); }}>
+      <form className="stack" onSubmit={async event => { event.preventDefault(); if (!note.trim()) return; if (await run(draft => { const current = draft.records.find(record => record.id === detail.id && record.tenantId === session.tenantId); if (!current) { if (kind === 'filiais') { draft.records.push({ ...structuredClone(detail), history: [{ date: new Date().toISOString(), text: `${session.name}: ${note.trim()}` }] }); return; } throw new Error('Registro não encontrado.'); } current.history.push({ date: new Date().toISOString(), text: `${session.name}: ${note.trim()}` }); }, 'Nota adicionada.', 'editar', rpc('add_record_note', { p_tenant: session.tenantId, p_id: detail.id, p_note: note.trim() }))) setNote(''); }}>
         <label className="field"><span>Adicionar nota</span><textarea aria-label="Nota de histórico" required value={note} onChange={event => setNote(event.target.value)} /></label>
         <button className="btn primary" disabled={pending}>Salvar nota</button>
       </form>

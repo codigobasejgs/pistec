@@ -8,6 +8,7 @@ import { cents, decimal, matches, cashExpected, paymentSummary } from './logic';
 import { FormActions, SearchBox, SelectField, TextField, useErp, useNarrow } from './shared';
 import { Receipt } from './SalesRecords';
 import { useBusyGuard } from '../../pwa';
+import { rpc } from '../../store';
 
 interface CartLine { productId: string; quantity: number }
 const METHODS = ['Dinheiro', 'Pix', 'Crédito', 'Débito'];
@@ -60,20 +61,21 @@ export default function Pos() {
   async function checkout(event: FormEvent) {
     event.preventDefault();
     if (blocked) { notice(summary.error || 'Revise o carrinho, o desconto e os pagamentos.'); return; }
-    let sale: Sale | null = null;
+    const input = { tenantId: session.tenantId, branchId: session.branchId, customerId, seller: session.name, items: cart, discount: discountAmount, surcharge: surchargeAmount, payments: parsed.filter(payment => payment.amount > 0), requestId: requestId.current };
     const ok = await run(draft => {
       if (suspendedId) {
         const saved = draft.records.find(record => record.id === suspendedId && record.tenantId === session.tenantId && record.kind === 'cart');
         if (!saved || !['Suspenso', 'Retomado'].includes(saved.status)) throw new Error('Carrinho suspenso já utilizado ou removido.');
       }
       // Valor ENTREGUE por forma; o domínio aplica não-dinheiro primeiro e calcula o troco.
-      sale = completeSale(draft, { tenantId: session.tenantId, branchId: session.branchId, customerId, seller: session.name, items: cart, discount: discountAmount, surcharge: surchargeAmount, payments: parsed.filter(payment => payment.amount > 0), requestId: requestId.current });
+      const sale = completeSale(draft, input);
       if (suspendedId) {
         const saved = draft.records.find(record => record.id === suspendedId && record.tenantId === session.tenantId);
         if (saved) { saved.status = 'Concluído'; saved.fields.saleId = sale.id; saved.history.push({ date: new Date().toISOString(), text: `Venda concluída: ${sale.id}` }); }
       }
-    }, 'Venda concluída. Estoque, caixa e financeiro atualizados.', 'cadastrar');
-    if (ok && sale) { setReceipt(sale); clear(); }
+      return sale;
+    }, 'Venda concluída. Estoque, caixa e financeiro atualizados.', 'cadastrar', rpc('complete_sale', { p: { ...input, cartId: suspendedId || null } }));
+    if (ok) { setReceipt(ok.value as Sale); clear(); }
   }
   async function suspend() {
     if (!cart.length || invalidMoney || discountAmount > subtotal || total < 0) { notice('Adicione itens e revise os valores antes de suspender.'); return; }
@@ -83,7 +85,12 @@ export default function Pos() {
       const record: OperationalRecord = { id, tenantId: session.tenantId, branchId: session.branchId, kind: 'cart', title: `Carrinho · ${customers.find(customer => customer.id === customerId)?.name || session.name}`, status: 'Suspenso', customerId, date: now, amount: total, fields: { discount, surcharge, discountMode, requestId: requestId.current }, items: cart.map(item => { const product = draft.products.find(row => row.id === item.productId && row.tenantId === session.tenantId && row.active); if (!product) throw new Error('Um produto deixou de estar disponível.'); return { ...item, name: product.name, price: product.price, cost: product.cost }; }), history: [{ date: now, text: `Carrinho suspenso por ${session.name}; estoque não reservado.` }] };
       const index = draft.records.findIndex(row => row.id === id && row.tenantId === session.tenantId);
       if (index >= 0) { if (draft.records[index].fields.saleId) throw new Error('Carrinho já convertido em venda.'); record.history = [...draft.records[index].history, ...record.history]; draft.records[index] = record; } else draft.records.push(record);
-    }, 'Carrinho suspenso. Valores e estoque serão revalidados ao retomar.', 'cadastrar')) clear();
+    }, 'Carrinho suspenso. Valores e estoque serão revalidados ao retomar.', 'cadastrar', rpc('save_record', { p_tenant: session.tenantId, p: {
+      id, kind: 'cart', branchId: session.branchId, customerId, amount: Math.max(total, 0),
+      title: `Carrinho · ${customers.find(customer => customer.id === customerId)?.name || session.name}`,
+      fields: { discount, surcharge, discountMode, requestId: requestId.current },
+      items: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: products.find(product => product.id === item.productId)?.price ?? 0 })),
+    } }))) clear();
   }
   function resume(record: OperationalRecord) {
     if (cart.length && !window.confirm('Substituir o carrinho atual? Itens não suspensos serão descartados.')) return;
@@ -109,7 +116,7 @@ export default function Pos() {
     <div className="grid grid-3"><Stat label="Itens no carrinho" value={itemCount} icon={<ShoppingCart size={20} />} /><Stat label="Total da venda" value={money(Math.max(total, 0))} /><Stat label="Dinheiro esperado no caixa" value={cash ? money(cashExpected(cash)) : 'Fechado'} /></div>
     {narrow && <nav className="tabs" aria-label="Etapas da venda">{STEPS.map(([value, label], index) => <button key={value} type="button" className={`btn ${step === value ? 'primary' : ''}`} aria-current={step === value ? 'step' : undefined} onClick={() => setStep(value)}>{index + 1}. {label}{value === 'cart' ? ` (${itemCount})` : ''}</button>)}</nav>}
     <div className="grid grid-2">{show('products') && catalog}<form className="stack" onSubmit={checkout}>{show('cart') && cartPanel}{show('payment') && paymentPanel}</form></div>
-    <Panel title="Carrinhos suspensos">{suspended.length ? suspended.map(record => <article key={record.id} className="toolbar"><strong>{record.title}</strong><span>{money(record.amount)}</span><button className="btn" disabled={pending} onClick={() => resume(record)}><Play size={16} aria-hidden="true" /> Retomar</button><button className="btn danger" disabled={pending || record.id === suspendedId} onClick={() => { if (window.confirm('Descartar este carrinho suspenso?')) void run(draft => { const saved = draft.records.find(row => row.id === record.id && row.tenantId === session.tenantId); if (!saved || saved.fields.saleId) throw new Error('Carrinho indisponível.'); saved.status = 'Descartado'; saved.history.push({ date: new Date().toISOString(), text: `Descartado por ${session.name}` }); }, 'Carrinho descartado.', 'excluir'); }}>Descartar</button></article>) : <Empty text="Nenhum carrinho suspenso." />}</Panel>
-    <Modal title="Abrir caixa" open={cashModal} onClose={() => !pending && setCashModal(false)}><form className="stack" onSubmit={async event => { event.preventDefault(); try { const amount = cents(opening); if (await run(draft => openCash(draft, session.tenantId, session.branchId, amount), 'Caixa aberto.')) setCashModal(false); } catch (error) { notice(error instanceof Error ? error.message : 'Valor inválido.'); } }}><TextField label="Fundo de abertura (R$)" inputMode="decimal" required value={opening} onChange={setOpening} /><FormActions pending={pending} onClose={() => setCashModal(false)} label="Abrir caixa" /></form></Modal>
+    <Panel title="Carrinhos suspensos">{suspended.length ? suspended.map(record => <article key={record.id} className="toolbar"><strong>{record.title}</strong><span>{money(record.amount)}</span><button className="btn" disabled={pending} onClick={() => resume(record)}><Play size={16} aria-hidden="true" /> Retomar</button><button className="btn danger" disabled={pending || record.id === suspendedId} onClick={() => { if (window.confirm('Descartar este carrinho suspenso?')) void run(draft => { const saved = draft.records.find(row => row.id === record.id && row.tenantId === session.tenantId); if (!saved || saved.fields.saleId) throw new Error('Carrinho indisponível.'); saved.status = 'Descartado'; saved.history.push({ date: new Date().toISOString(), text: `Descartado por ${session.name}` }); }, 'Carrinho descartado.', 'excluir', rpc('transition_record', { p_tenant: session.tenantId, p_id: record.id, p_status: 'Descartado' })); }}>Descartar</button></article>) : <Empty text="Nenhum carrinho suspenso." />}</Panel>
+    <Modal title="Abrir caixa" open={cashModal} onClose={() => !pending && setCashModal(false)}><form className="stack" onSubmit={async event => { event.preventDefault(); try { const amount = cents(opening); if (await run(draft => openCash(draft, session.tenantId, session.branchId, amount), 'Caixa aberto.', 'editar', rpc('open_cash', { p_tenant: session.tenantId, p_branch: session.branchId, p_opening: amount }))) setCashModal(false); } catch (error) { notice(error instanceof Error ? error.message : 'Valor inválido.'); } }}><TextField label="Fundo de abertura (R$)" inputMode="decimal" required value={opening} onChange={setOpening} /><FormActions pending={pending} onClose={() => setCashModal(false)} label="Abrir caixa" /></form></Modal>
     <Modal title="Venda concluída" open={!!receipt} onClose={() => setReceipt(null)}>{receipt && <div className="stack" data-tour="pdv-receipt">{receipt.change > 0 ? <p className="callout" role="status"><strong style={{ fontSize: '1.4rem' }}>Troco: {money(receipt.change)}</strong></p> : <p className="callout" role="status">Sem troco a devolver.</p>}<Receipt sale={receipt} customer={customers.find(customer => customer.id === receipt.customerId)?.name} business={state.tenants.find(tenant => tenant.id === session.tenantId)?.name} /></div>}</Modal></div>;
 }

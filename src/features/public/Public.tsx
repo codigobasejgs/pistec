@@ -186,6 +186,7 @@ function DemoChooser() {
       {action.error && <p role="alert" className="pub-error">{action.error}</p>}
       <Link to="/recuperar-acesso">Recuperar acesso</Link>
       <Link to="/cadastro">Criar uma empresa demonstrativa</Link>
+      <a href="/app/login">Entrar em uma conta real</a>
     </div>
   </section>;
 }
