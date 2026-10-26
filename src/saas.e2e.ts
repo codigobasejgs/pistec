@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('onboarding cria empresa em teste e ela aparece no Super Admin', async ({ page }) => {
+test('onboarding cria empresa em teste e ela aparece na demonstração', async ({ page }) => {
   await page.goto('/cadastro?plano=profissional&periodo=quarterly');
   const next = () => page.getByRole('button', { name: /Continuar/ }).click();
   await page.getByLabel('Seu nome').fill('Teste E2E'); await page.getByLabel('E-mail').fill('e2e@exemplo.example'); await next();
@@ -12,9 +12,8 @@ test('onboarding cria empresa em teste e ela aparece no Super Admin', async ({ p
   await page.getByRole('checkbox').check(); await page.getByRole('button', { name: /Criar empresa demonstrativa/ }).click();
   await expect(page).toHaveURL(/\/loja\/oficina-e2e\/dashboard/);
   await expect(page.locator('main h1')).toContainText('Olá, Teste');
-  await page.goto('/demonstracao'); await page.getByRole('button', { name: 'Entrar como Super Admin' }).click();
-  await page.getByRole('link', { name: 'Empresas', exact: true }).click(); // SPA: sessão demo em memória
-  await expect(page.getByText('Oficina E2E').first()).toBeVisible();
+  await page.goto('/demonstracao');
+  await expect(page.getByLabel('Empresa').locator('option', { hasText: 'Oficina E2E' })).toHaveCount(1);
 });
 
 test('tema e marca isolados por empresa; papel sem permissão é bloqueado', async ({ page }) => {
@@ -34,9 +33,16 @@ test('tema e marca isolados por empresa; papel sem permissão é bloqueado', asy
   await expect(page.getByText('Acesso não permitido')).toBeVisible();
 });
 
-test('lead comercial persiste na plataforma e Super Admin exige sessão', async ({ page }) => {
-  await page.goto('/admin');
-  await expect(page).toHaveURL(/\/login/);
+test('Super Admin não existe na demonstração: /admin leva ao login real', async ({ page }) => {
+  await page.route(/supabase/, route => route.abort()); // não toca o servidor real
+  await page.goto('/admin/empresas');
+  await expect(page).toHaveURL(/\/app\/(admin|login)/);
+  await page.goto('/demonstracao');
+  await expect(page.getByRole('button', { name: /Super Admin/ })).toHaveCount(0);
+  // Sessão antiga gravada com admin=true não reativa nada.
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('pistec-demo-session') ?? 'null'); if (s) localStorage.setItem('pistec-demo-session', JSON.stringify({ ...s, admin: true })); });
+  await page.goto('/loja/moto-prime/dashboard');
+  await expect(page.locator('.account-button')).not.toContainText('Super Admin');
   await page.goto('/');
   await expect(page.getByRole('link', { name: /Testar grátis por 14 dias/ })).toBeVisible();
   await expect(page.locator('img[src="/screenshots/dashboard.webp"]').first()).toBeVisible();

@@ -14,12 +14,12 @@ const findTarget = (step: TourStep) => document.querySelector<HTMLElement>(`[dat
  * Abre no módulo atual; `before` clica em outro alvo antes (ex.: abrir o formulário).
  * Progresso salvo por empresa/papel/módulo (preferência local, opcional).
  */
-export default function Tour({ admin, onClose }: { admin: boolean; onClose: () => void }) {
+export default function Tour({ onClose }: { onClose: () => void }) {
   const { state, session } = useDemo(); const navigate = useNavigate(); const location = useLocation();
-  const base = admin ? '/admin' : `/loja/${state.tenants.find(t => t.id === session.tenantId)?.slug}`;
-  const [module, setModule] = useState(() => tourFor(location.pathname, admin));
+  const base = `/loja/${state.tenants.find(t => t.id === session.tenantId)?.slug}`;
+  const [module, setModule] = useState(() => tourFor(location.pathname));
   const steps = tours[module] ?? [];
-  const key = `pistec-tour-${admin ? 'admin' : session.tenantId}-${session.role}-${module}`;
+  const key = `pistec-tour-${session.tenantId}-${session.role}-${module}`;
   const [index, setIndex] = useState(() => { try { return tourIndex(localStorage.getItem(key), steps.length); } catch { return 0; } });
   const [rect, setRect] = useState<DOMRect | null>(null); const [missing, setMissing] = useState(false);
   const popover = useRef<HTMLDivElement>(null);
@@ -29,8 +29,8 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
   // Navega para a rota do passo, executa o pré-clique e localiza o alvo (espera render lazy).
   useEffect(() => {
     if (!step) return; let cancelled = false; setRect(null); setMissing(false);
-    // Rota do passo: route explícita (''=raiz) ou o próprio módulo; tours admin usam 'admin-<seção>'.
-    const sub = step.route ?? (admin ? module.replace(/^admin-?/, '') : module);
+    // Rota do passo: route explícita (''=raiz) ou o próprio módulo.
+    const sub = step.route ?? module;
     const route = `${base}${sub ? `/${sub}` : ''}`;
     if (location.pathname !== route) navigate(route);
     let tries = 0; let preClicked = false;
@@ -44,7 +44,7 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
     };
     tick();
     return () => { cancelled = true; };
-  }, [step, base, module, admin, navigate, location.pathname]);
+  }, [step, base, module, navigate, location.pathname]);
   // Acompanha rolagem/redimensionamento.
   useEffect(() => { if (!step) return; const update = () => { const el = findTarget(step); if (visible(el)) setRect(el!.getBoundingClientRect()); }; addEventListener('resize', update); addEventListener('scroll', update, true); return () => { removeEventListener('resize', update); removeEventListener('scroll', update, true); }; }, [step]);
   useLayoutEffect(() => { popover.current?.focus(); }, [index, module]);
@@ -52,7 +52,7 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
   const prev = useCallback(() => setIndex(i => Math.max(0, i - 1)), []);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if ((e.target as HTMLElement)?.matches('input,textarea,select')) return; if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); }; addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey); }, [next, prev, onClose]);
 
-  const modules = Object.keys(tours).filter(m => admin ? m.startsWith('admin') : !m.startsWith('admin') && can(session.role, m, 'visualizar'));
+  const modules = Object.keys(tours).filter(m => can(session.role, m, 'visualizar'));
   const last = index >= steps.length - 1;
   // Posição do popover: abaixo do alvo, acima se não couber; no mobile, fixo no rodapé.
   const mobile = innerWidth < 640; const pad = 8;
@@ -69,4 +69,4 @@ export default function Tour({ admin, onClose }: { admin: boolean; onClose: () =
     </div>
   </div>;
 }
-const labelOf = (m: string) => ({ dashboard: 'Dashboard', produtos: 'Produtos', estoque: 'Estoque', inventario: 'Inventário', vendas: 'Vendas', pdv: 'PDV', caixa: 'Caixa', clientes: 'Clientes', crm: 'CRM', veiculos: 'Veículos', orcamentos: 'Orçamentos', 'ordens-servico': 'Ordens de serviço', agenda: 'Agenda', compras: 'Compras', financeiro: 'Financeiro', 'contas-receber': 'Contas a receber', 'contas-pagar': 'Contas a pagar', whatsapp: 'WhatsApp', relatorios: 'Relatórios', funcionarios: 'Funcionários', filiais: 'Filiais', personalizacao: 'Personalização', 'minha-assinatura': 'Minha assinatura', admin: 'Super Admin', 'admin-cobrancas': 'Cobranças e cupons' } as Record<string, string>)[m] ?? m;
+const labelOf = (m: string) => ({ dashboard: 'Dashboard', produtos: 'Produtos', estoque: 'Estoque', inventario: 'Inventário', vendas: 'Vendas', pdv: 'PDV', caixa: 'Caixa', clientes: 'Clientes', crm: 'CRM', veiculos: 'Veículos', orcamentos: 'Orçamentos', 'ordens-servico': 'Ordens de serviço', agenda: 'Agenda', compras: 'Compras', financeiro: 'Financeiro', 'contas-receber': 'Contas a receber', 'contas-pagar': 'Contas a pagar', whatsapp: 'WhatsApp', relatorios: 'Relatórios', funcionarios: 'Funcionários', filiais: 'Filiais', personalizacao: 'Personalização', 'minha-assinatura': 'Minha assinatura' } as Record<string, string>)[m] ?? m;

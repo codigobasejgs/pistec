@@ -38,7 +38,7 @@ export function loadPersistedSession(): Session | null {
         branchId: s.branchId,
         role: s.role as Session['role'],
         name: s.name,
-        admin: s.admin,
+        admin: false, // Demo nunca tem Super Admin; sessões antigas com admin=true são rebaixadas.
       };
     }
     return null;

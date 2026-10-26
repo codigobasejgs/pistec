@@ -157,12 +157,11 @@ function DemoChooser() {
   const { state, setSession } = useDemo(); const navigate = useNavigate(); const action = useAction();
   const [tenantId, setTenantId] = useState(''); const [role, setRole] = useState<Role>('Proprietário');
   const selectedId = tenantId || state.tenants[0]?.id || '';
-  function enter(admin = false) {
+  function enter() {
     void action.run(() => {
       const tenant = state.tenants.find(item => item.id === selectedId);
       const branch = state.branches.find(item => item.tenantId === selectedId && item.active);
       if (!tenant || !branch) throw new Error('Empresa sem filial ativa. Escolha outra demonstração.');
-      if (admin) { setSession({ tenantId: tenant.id, branchId: branch.id, role: 'Administrador', name: 'Super Admin Demo', admin: true }); navigate('/admin'); return; }
       setSession({ tenantId: tenant.id, branchId: branch.id, role, name: `${role} Demo`, admin: false }); navigate(`/loja/${tenant.slug}/dashboard`);
     }, 'Sessão demonstrativa iniciada.');
   }
@@ -180,9 +179,6 @@ function DemoChooser() {
       <Field label="Perfil de acesso"><select value={role} onChange={event => setRole(event.target.value as Role)}>{roles.map(item => <option key={item}>{item}</option>)}</select></Field>
       <button className="pub-button" disabled={action.pending || !selectedId} onClick={() => enter()}>Explorar empresa<ArrowRight size={18}/></button>
       <div className="pub-divider"/>
-      <h3>Gestão da plataforma</h3>
-      <p>Empresas clientes, planos, cobranças SaaS e cupons de desconto simulados, com identidade visual própria PISTEC.</p>
-      <button className="pub-button pub-button-outline" disabled={action.pending || !selectedId} onClick={() => enter(true)}>Entrar como Super Admin</button>
       {action.error && <p role="alert" className="pub-error">{action.error}</p>}
       <Link to="/recuperar-acesso">Recuperar acesso</Link>
       <Link to="/cadastro">Criar uma empresa demonstrativa</Link>

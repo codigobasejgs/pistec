@@ -19,15 +19,6 @@ test('sessão demo (empresa, perfil e filial) sobrevive ao reload; sair limpa', 
   await expect(page.locator('.account-button')).toContainText('Proprietário');
 });
 
-test('Super Admin persiste no reload e usa identidade PISTEC', async ({ page }) => {
-  await page.goto('/demonstracao');
-  await page.getByRole('button', { name: 'Entrar como Super Admin' }).click();
-  await expect(page).toHaveURL(/\/admin$/);
-  await page.reload();
-  await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.locator('.sidebar-brand img')).toHaveAttribute('src', /logo-horizontal|symbol/);
-});
-
 test('tour destaca o elemento real e navega por passos', async ({ page }) => {
   await page.goto('/loja/moto-prime/dashboard');
   await page.getByRole('button', { name: 'Menu da conta' }).click();

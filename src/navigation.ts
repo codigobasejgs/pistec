@@ -19,6 +19,3 @@ export const nav: NavItem[] = [
   {path:'configuracoes',label:'Configurações',icon:Settings,group:'Sistema'},{path:'personalizacao',label:'Personalização',icon:Palette,group:'Sistema'},
   {path:'minha-assinatura',label:'Minha assinatura',icon:Crown,group:'Sistema'},{path:'ajuda',label:'Central de ajuda',icon:CircleHelp,group:'Sistema'},
 ];
-export const adminNav: NavItem[] = [
- ['','Dashboard',LayoutDashboard],['empresas','Empresas',Building2],['planos','Planos',Crown],['assinaturas','Assinaturas',FileText],['cobrancas','Cobranças',Wallet],['financeiro','Financeiro SaaS',ChartNoAxesCombined],['suporte','Central de suporte',CircleHelp],['integracoes','Integrações',Workflow],['usuarios','Administradores',ShieldCheck],['relatorios','Relatórios',ClipboardList],['configuracoes','Configurações',Settings]
-].map(([path,label,icon]) => ({path:path as string,label:label as string,icon:icon as LucideIcon,group:'Plataforma'}));

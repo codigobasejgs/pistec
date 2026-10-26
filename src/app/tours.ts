@@ -91,24 +91,11 @@ export const tours: Record<string, TourStep[]> = {
     { target: 'sub-change', title: 'Simulação de mudança', text: 'Simule upgrade e downgrade; limites menores que o uso atual bloqueiam a troca.', route: 'minha-assinatura' },
     { target: 'sub-invoices', title: 'Faturas SaaS', text: 'Faturas simuladas via Asaas e InfinitePay. Nenhum pagamento real é cobrado.', route: 'minha-assinatura' },
   ],
-  admin: [
-    { target: 'admin-kpis', title: 'Painel da plataforma', text: 'MRR, ARR, empresas ativas, inadimplência e novos clientes calculados ao vivo.', route: '' },
-    { target: 'admin-companies', title: 'Gestão de empresas', text: 'Controle de tenants, filiais ativas, limites e situação cadastral.', route: 'empresas' },
-    { target: 'admin-plans', title: 'Planos e limites', text: 'Tabela de preços mensal, trimestral, anual e limites que alimentam a landing page.', route: 'planos' },
-    { target: 'admin-billing', title: 'Faturamento SaaS', text: 'Cobranças exclusivas da plataforma PISTEC (separadas das vendas das lojas).', route: 'cobrancas' },
-    { target: 'admin-coupons', title: 'Cupons promocionais', text: 'Gerenciamento de cupons de desconto para a primeira fatura SaaS.', route: 'cobrancas' },
-    { target: 'admin-support', title: 'Central de suporte', text: 'Acompanhamento de tickets demonstrativos de atendimento aos lojistas.', route: 'suporte' },
-  ],
 };
 
 /** Identifica o tour correspondente ao caminho da URL. */
-export function tourFor(pathname: string, admin: boolean): string {
+export function tourFor(pathname: string): string {
   const parts = pathname.split('/').filter(Boolean);
-  if (admin) {
-    const sec = parts[1];
-    if (sec === 'cobrancas') return 'admin';
-    return sec && tours[`admin-${sec}`] ? `admin-${sec}` : 'admin';
-  }
   const mod = parts[2] ?? 'dashboard';
   return tours[mod] ? mod : 'dashboard';
 }
