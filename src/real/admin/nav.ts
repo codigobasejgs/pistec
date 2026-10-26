@@ -1,0 +1,38 @@
+import { Activity, BarChart3, Bell, BellRing, Bot, Building2, CircleAlert, CircleHelp, ClipboardList, CreditCard, FileText, GraduationCap, Headphones, KeyRound,
+  LayoutDashboard, ListChecks, Mail, Megaphone, MessageCircle, Plug, Receipt, ScrollText, Settings, ShieldCheck, Tags, Ticket, UserPlus, Users, Wallet, Webhook, Workflow, type LucideIcon } from 'lucide-react';
+
+export type AdminNavItem = { path: string; label: string; icon: LucideIcon; group: string; perm?: string };
+// Cada item aponta para uma página real (ou uma visão filtrada da mesma página).
+export const adminNav: AdminNavItem[] = [
+  { path: '', label: 'Dashboard', icon: LayoutDashboard, group: 'Visão executiva' },
+  { path: 'analytics', label: 'Indicadores SaaS', icon: BarChart3, group: 'Visão executiva', perm: 'billing.read' },
+  { path: 'atividades', label: 'Atividades recentes', icon: Activity, group: 'Visão executiva', perm: 'audit.read' },
+  { path: 'alertas', label: 'Alertas e notificações', icon: Bell, group: 'Visão executiva' },
+  { path: 'empresas', label: 'Todas as empresas', icon: Building2, group: 'Clientes e empresas' },
+  { path: 'empresas/testes', label: 'Empresas em teste', icon: ListChecks, group: 'Clientes e empresas' },
+  { path: 'empresas/inadimplentes', label: 'Inadimplentes e suspensas', icon: CircleAlert, group: 'Clientes e empresas' },
+  { path: 'leads', label: 'Leads comerciais', icon: UserPlus, group: 'Clientes e empresas', perm: 'leads.manage' },
+  { path: 'onboarding', label: 'Onboarding', icon: GraduationCap, group: 'Clientes e empresas' },
+  { path: 'planos', label: 'Planos SaaS', icon: Tags, group: 'Assinaturas e comercial' },
+  { path: 'assinaturas', label: 'Assinaturas', icon: FileText, group: 'Assinaturas e comercial' },
+  { path: 'faturas', label: 'Faturas e cobranças', icon: Receipt, group: 'Assinaturas e comercial', perm: 'billing.read' },
+  { path: 'cupons', label: 'Cupons promocionais', icon: Ticket, group: 'Assinaturas e comercial', perm: 'coupons.manage' },
+  { path: 'financeiro', label: 'Receita e faturamento', icon: Wallet, group: 'Assinaturas e comercial', perm: 'billing.read' },
+  { path: 'suporte', label: 'Suporte e chamados', icon: Headphones, group: 'Operação da plataforma', perm: 'support.manage' },
+  { path: 'comunicados', label: 'Comunicados', icon: Megaphone, group: 'Operação da plataforma', perm: 'broadcast' },
+  { path: 'notificacoes', label: 'Notificações e push', icon: BellRing, group: 'Operação da plataforma' },
+  { path: 'automacoes', label: 'Automações e filas', icon: Workflow, group: 'Operação da plataforma', perm: 'jobs.retry' },
+  { path: 'integracoes', label: 'Central de integrações', icon: Plug, group: 'Integrações e tecnologia' },
+  { path: 'integracoes/infinitepay', label: 'InfinitePay', icon: CreditCard, group: 'Integrações e tecnologia' },
+  { path: 'integracoes/resend', label: 'Resend (e-mails)', icon: Mail, group: 'Integrações e tecnologia' },
+  { path: 'integracoes/evolution', label: 'Evolution (WhatsApp)', icon: MessageCircle, group: 'Integrações e tecnologia' },
+  { path: 'integracoes/gemini', label: 'Gemini (IA)', icon: Bot, group: 'Integrações e tecnologia' },
+  { path: 'integracoes/webhooks', label: 'Webhooks', icon: Webhook, group: 'Integrações e tecnologia', perm: 'integrations.manage' },
+  { path: 'administradores', label: 'Administradores', icon: Users, group: 'Administração e segurança' },
+  { path: 'permissoes', label: 'Perfis de acesso', icon: KeyRound, group: 'Administração e segurança' },
+  { path: 'auditoria', label: 'Auditoria', icon: ScrollText, group: 'Administração e segurança', perm: 'audit.read' },
+  { path: 'seguranca', label: 'Segurança', icon: ShieldCheck, group: 'Administração e segurança' },
+  { path: 'configuracoes', label: 'Configurações', icon: Settings, group: 'Administração e segurança' },
+  { path: 'ajuda', label: 'Central de Ajuda', icon: CircleHelp, group: 'Administração e segurança' },
+  { path: 'tutoriais', label: 'Tour guiado', icon: ClipboardList, group: 'Administração e segurança' },
+];
