@@ -24,12 +24,18 @@ export async function signOut() {
   if (error) throw error;
 }
 export async function enrollMfa() {
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: `PISTEC ${new Date().toISOString()}` });
+  // Tentativas anteriores não concluídas são descartadas: só um QR válido por vez.
+  const { data: list } = await supabase.auth.mfa.listFactors();
+  for (const f of list?.all ?? []) if (f.factor_type === 'totp' && f.status === 'unverified') await supabase.auth.mfa.unenroll({ factorId: f.id });
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'PISTEC', friendlyName: `PISTEC ${new Date().toISOString()}` });
   if (error) throw error;
   return data;
 }
 export async function verifyMfa(factorId: string, code: string) {
-  if (!/^\d{6}$/.test(code)) throw new Error('Informe os seis dígitos do aplicativo autenticador.');
-  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
-  if (error) throw error;
+  const digits = code.replace(/\D/g, '');
+  if (digits.length !== 6) throw new Error('Informe os seis dígitos do aplicativo autenticador.');
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: digits });
+  if (error) throw new Error(/invalid|inválid/i.test(error.message)
+    ? 'Código não aceito. Digite o código que está aparecendo agora (ele muda a cada 30 segundos). Se continuar, ative "Data e hora automáticas" no celular.'
+    : error.message);
 }

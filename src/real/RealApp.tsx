@@ -29,7 +29,7 @@ const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi pos
 const denied = () => { throw new Error('Operação demonstrativa indisponível no ambiente real.'); };
 
 function Mfa({ refresh }: { refresh: () => void }) {
-  const [factor, setFactor] = useState(''), [qr, setQr] = useState(''), [error, setError] = useState(''), [pending, setPending] = useState(false);
+  const [factor, setFactor] = useState(''), [qr, setQr] = useState(''), [secret, setSecret] = useState(''), [error, setError] = useState(''), [pending, setPending] = useState(false);
   useEffect(() => { let active = true; void supabase.auth.mfa.listFactors().then(({ data, error }) => {
     if (!active) return;
     if (error) setError(error.message);
@@ -37,7 +37,7 @@ function Mfa({ refresh }: { refresh: () => void }) {
   }); return () => { active = false; }; }, []);
   async function enroll() {
     setPending(true); setError('');
-    try { const data = await enrollMfa(); setFactor(data.id); setQr(data.totp.qr_code); }
+    try { const data = await enrollMfa(); setFactor(data.id); setQr(data.totp.qr_code); setSecret(data.totp.secret); }
     catch (e) { setError(errorText(e)); } finally { setPending(false); }
   }
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -45,8 +45,12 @@ function Mfa({ refresh }: { refresh: () => void }) {
     try { await verifyMfa(factor, String(new FormData(e.currentTarget).get('code') ?? '')); refresh(); }
     catch (e) { setError(errorText(e)); } finally { setPending(false); }
   }
-  return <main className="page" style={{ maxWidth: 520, margin: 'auto' }}><h1>Verificação em duas etapas</h1><p>O acesso administrativo exige um aplicativo autenticador.</p>{qr && <img src={qr} alt="QR code para cadastrar PISTEC no autenticador" width={240}/>}
-    {!factor ? <button className="btn primary" disabled={pending} onClick={() => void enroll()}>Configurar autenticador</button> : <form className="stack" onSubmit={submit}><label className="field">Código de seis dígitos<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required maxLength={6}/></label><button className="btn primary" disabled={pending}>Verificar código</button></form>}{error && <p role="alert">{error}</p>}<Link to="/">Voltar</Link></main>;
+  // QR em fundo branco com margem: em tema escuro o SVG transparente não é lido pela câmera.
+  return <main className="page" style={{ maxWidth: 520, margin: 'auto' }}><h1>Verificação em duas etapas</h1><p>O acesso administrativo exige um aplicativo autenticador (Google Authenticator, Microsoft Authenticator ou Authy).</p>
+    {qr && <><ol><li>No aplicativo, toque em <strong>+</strong> → <strong>Ler código QR</strong>.</li><li>Aponte a câmera para o quadro abaixo.</li><li>Digite o código de 6 dígitos que aparecer.</li></ol>
+      <div style={{ background: '#fff', padding: 16, borderRadius: 12, width: 'fit-content' }}><img src={qr} alt="QR code para cadastrar PISTEC no autenticador" width={260} height={260} style={{ display: 'block', imageRendering: 'pixelated' }}/></div>
+      {secret && <details><summary>Não consegue ler o QR? Digite a chave</summary><p>No aplicativo: <strong>+</strong> → <strong>Inserir chave de configuração</strong>. Nome: PISTEC. Tipo: baseada no tempo.</p><p><code style={{ fontSize: 18, letterSpacing: 2, overflowWrap: 'anywhere', userSelect: 'all' }}>{secret.match(/.{1,4}/g)?.join(' ')}</code></p></details>}</>}
+    {!factor ? <button className="btn primary" disabled={pending} onClick={() => void enroll()}>Configurar autenticador</button> : <form className="stack" onSubmit={submit}><label className="field">Código de seis dígitos<input name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={7} autoFocus/></label><button className="btn primary" disabled={pending}>Verificar código</button>{qr && <button type="button" className="btn" disabled={pending} onClick={() => void enroll()}>Gerar novo QR Code</button>}</form>}{error && <p role="alert">{error}</p>}<Link to="/">Voltar</Link></main>;
 }
 
 function Onboarding({ refresh }: { refresh: () => void }) {
