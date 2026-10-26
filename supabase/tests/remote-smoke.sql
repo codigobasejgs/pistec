@@ -30,7 +30,7 @@ begin
   exception when insufficient_privilege then null; end;
   begin
     perform public.admin_save_coupon('{"code":"FORJADO"}');
-    raise exception 'RPC permitiu admin sem MFA';
+    raise exception 'RPC permitiu admin a usuário comum';
   exception when insufficient_privilege then null; end;
 end $$;
 reset role;

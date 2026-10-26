@@ -19,7 +19,7 @@ export default function Integrations() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     const { data, error } = await supabase.functions.invoke('admin-health', { body: {} });
-    if (error || !data?.config) setError('Não foi possível consultar as integrações. Confirme a verificação em duas etapas e tente de novo.');
+    if (error || !data?.config) setError('Não foi possível consultar as integrações. Recarregue a página e tente de novo.');
     else setHealth(data);
     setLoading(false);
   }, []);

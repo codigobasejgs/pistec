@@ -135,8 +135,8 @@ test('cobrança: vencimento e fim de teste geram evento uma vez; Super Admin é 
   await service(db, 'select public.deliver_internal_event($1)', [event]); // reprocesso: aviso não duplica
   expect(await deliveries(admin)).toEqual(['platform.tenant.created']);
   const q = `select 1 from public.notifications where type='platform.tenant.created' and data->>'tenantId'=$1`;
-  expect(await as(db, admin, q, [B.tenant], 'aal1')).toEqual([]); // sem MFA não lê
-  expect(await as(db, admin, q, [B.tenant], 'aal2')).toHaveLength(1);
+  expect(await as(db, admin, q, [B.tenant])).toHaveLength(1);
+  expect(await as(db, B.user, q, [B.tenant])).toEqual([]); // aviso de plataforma não vaza para a loja
   const summary = (await as<{ r: { pushDevices: number } }>(db, admin, 'select public.admin_integration_summary() r', [], 'aal2'))[0].r;
   expect(summary.pushDevices).toBeGreaterThan(0);
   await expect(as(db, A.user, 'select public.admin_integration_summary()', [], 'aal2')).rejects.toThrow(/Super Admin/);

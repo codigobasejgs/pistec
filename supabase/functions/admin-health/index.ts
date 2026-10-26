@@ -1,6 +1,6 @@
 import { authenticated, HttpError, serve } from '../_shared/http.ts';
 
-// Super Admin (aal2): quais integrações estão configuradas. Só nomes/booleanos; nenhum valor de segredo sai daqui.
+// Super Admin: quais integrações estão configuradas. Só nomes/booleanos; nenhum valor de segredo sai daqui.
 const groups: Record<string, string[]> = {
   InfinitePay: ['INFINITEPAY_HANDLE', 'BILLING_WEBHOOK_TOKEN', 'BILLING_ENABLED'],
   Resend: ['RESEND_API_KEY', 'EMAIL_FROM', 'RESEND_WEBHOOK_SECRET'],
@@ -13,7 +13,7 @@ const groups: Record<string, string[]> = {
 serve(async request => {
   const { client } = await authenticated(request);
   const { data, error } = await client.rpc('admin_integration_summary');
-  if (error) throw new HttpError(403, 'Acesso restrito ao Super Admin com MFA.');
+  if (error) throw new HttpError(403, 'Acesso restrito ao Super Admin.');
   const config = Object.fromEntries(Object.entries(groups).map(([name, vars]) => [name, Object.fromEntries(vars.map(v => [v, Boolean(Deno.env.get(v))]))]));
   return { config, flags: { billing: Deno.env.get('BILLING_ENABLED') === 'true', ai: Deno.env.get('AI_ENABLED') === 'true' }, metrics: data, checkedAt: new Date().toISOString() };
 });

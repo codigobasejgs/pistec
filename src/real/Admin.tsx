@@ -15,7 +15,7 @@ export default function RealAdmin() {
     catch(e){setError(e instanceof Error?e.message:'Não foi possível concluir.');}
     finally{setPending(false);}
   }
-  return <main className="page"><PageHeader title="Super Admin PISTEC" subtitle="Sessão com verificação em duas etapas confirmada."/><Link to="/">Minhas empresas</Link>{error&&<p role="alert">{error}</p>}{status&&<p role="status">{status}</p>}
+  return <main className="page"><PageHeader title="Super Admin PISTEC" subtitle="Administração da plataforma PISTEC."/><Link to="/">Minhas empresas</Link>{error&&<p role="alert">{error}</p>}{status&&<p role="status">{status}</p>}
     <Integrations/>
     <Panel title="Empresas cadastradas">{state.tenants.length===0&&<p>Nenhuma empresa cadastrada.</p>}{state.tenants.map(t=><form key={t.id} className="toolbar" onSubmit={e=>{
       e.preventDefault(); const f=new FormData(e.currentTarget);

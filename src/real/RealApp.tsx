@@ -5,7 +5,7 @@ import { DemoContext, type DemoContextValue, type Remote } from '../store';
 import type { Role, Session } from '../types';
 import { supabase } from './client';
 import { emptyState, loadRealState } from './read';
-import { enrollMfa, signOut, verifyMfa } from './auth';
+import { signOut } from './auth';
 import AuthPage from './AuthPage';
 import Layout from '../app/Layout';
 import Dashboard from '../features/dashboard/Dashboard';
@@ -27,31 +27,6 @@ import RealWhatsApp from './WhatsApp';
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
 const denied = () => { throw new Error('Operação demonstrativa indisponível no ambiente real.'); };
-
-function Mfa({ refresh }: { refresh: () => void }) {
-  const [factor, setFactor] = useState(''), [qr, setQr] = useState(''), [secret, setSecret] = useState(''), [error, setError] = useState(''), [pending, setPending] = useState(false);
-  useEffect(() => { let active = true; void supabase.auth.mfa.listFactors().then(({ data, error }) => {
-    if (!active) return;
-    if (error) setError(error.message);
-    else setFactor(data.totp.find(f => f.status === 'verified')?.id ?? '');
-  }); return () => { active = false; }; }, []);
-  async function enroll() {
-    setPending(true); setError('');
-    try { const data = await enrollMfa(); setFactor(data.id); setQr(data.totp.qr_code); setSecret(data.totp.secret); }
-    catch (e) { setError(errorText(e)); } finally { setPending(false); }
-  }
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setPending(true); setError('');
-    try { await verifyMfa(factor, String(new FormData(e.currentTarget).get('code') ?? '')); refresh(); }
-    catch (e) { setError(errorText(e)); } finally { setPending(false); }
-  }
-  // QR em fundo branco com margem: em tema escuro o SVG transparente não é lido pela câmera.
-  return <main className="page" style={{ maxWidth: 520, margin: 'auto' }}><h1>Verificação em duas etapas</h1><p>O acesso administrativo exige um aplicativo autenticador (Google Authenticator, Microsoft Authenticator ou Authy).</p>
-    {qr && <><ol><li>No aplicativo, toque em <strong>+</strong> → <strong>Ler código QR</strong>.</li><li>Aponte a câmera para o quadro abaixo.</li><li>Digite o código de 6 dígitos que aparecer.</li></ol>
-      <div style={{ background: '#fff', padding: 16, borderRadius: 12, width: 'fit-content' }}><img src={qr} alt="QR code para cadastrar PISTEC no autenticador" width={260} height={260} style={{ display: 'block', imageRendering: 'pixelated' }}/></div>
-      {secret && <details><summary>Não consegue ler o QR? Digite a chave</summary><p>No aplicativo: <strong>+</strong> → <strong>Inserir chave de configuração</strong>. Nome: PISTEC. Tipo: baseada no tempo.</p><p><code style={{ fontSize: 18, letterSpacing: 2, overflowWrap: 'anywhere', userSelect: 'all' }}>{secret.match(/.{1,4}/g)?.join(' ')}</code></p></details>}</>}
-    {!factor ? <button className="btn primary" disabled={pending} onClick={() => void enroll()}>Configurar autenticador</button> : <form className="stack" onSubmit={submit}><label className="field">Código de seis dígitos<input name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={7} autoFocus/></label><button className="btn primary" disabled={pending}>Verificar código</button>{qr && <button type="button" className="btn" disabled={pending} onClick={() => void enroll()}>Gerar novo QR Code</button>}</form>}{error && <p role="alert">{error}</p>}<Link to="/">Voltar</Link></main>;
-}
 
 function Onboarding({ refresh }: { refresh: () => void }) {
   const [error, setError] = useState(''), [pending, setPending] = useState(false);
@@ -82,7 +57,7 @@ function RealRoutes() {
   const [auth, setAuth] = useState<AuthSession | null>(null), [authReady, setAuthReady] = useState(false);
   const [state, setState] = useState(emptyState), [members, setMembers] = useState<Membership[]>([]);
   const [session, setSession] = useState<Session>({ tenantId: '', branchId: '', role: 'Atendente', name: '', admin: false });
-  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [revision, setRevision] = useState(0), [adminEligible, setAdminEligible] = useState(false);
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [revision, setRevision] = useState(0);
   const [loadedKey, setLoadedKey] = useState('');
   const epoch = useRef(0), mutationLock = useRef(false);
   const refresh = () => setRevision(r => r + 1);
@@ -104,13 +79,13 @@ function RealRoutes() {
     const request = ++epoch.current;
     setLoading(true); setError(''); setLoadedKey(''); setState(emptyState());
     void (async () => {
-      const [{ data: memberships, error: membershipError }, { data: admins, error: adminError }, { data: assurance, error: assuranceError }] = await Promise.all([
+      const [{ data: memberships, error: membershipError }, { data: admins, error: adminError }] = await Promise.all([
         supabase.from('memberships').select('tenant_id,role,branch_ids').eq('user_id', auth.user.id).eq('active', true),
         supabase.from('platform_admins').select('user_id').eq('user_id', auth.user.id),
-        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
       ]);
-      if (membershipError || adminError || assuranceError) throw membershipError || adminError || assuranceError;
-      const eligible = Boolean(admins?.length), isAdmin = eligible && assurance?.currentLevel === 'aal2';
+      if (membershipError || adminError) throw membershipError || adminError;
+      // Exibição apenas; cada operação de admin é revalidada no servidor (app.require_platform_admin).
+      const isAdmin = Boolean(admins?.length);
       const scope = (memberships ?? []) as Membership[];
       const catalogue = await loadRealState(supabase, null, false);
       const tenant = catalogue.tenants.find(t => t.slug === slug);
@@ -119,7 +94,7 @@ function RealRoutes() {
       const result = tenant ? await loadRealState(supabase, tenant.id) : adminRoute && isAdmin ? await loadRealState(supabase, null, true) : catalogue;
       if (request !== epoch.current) return;
       const branch = result.branches.find(b => b.tenantId === tenant?.id && b.active && (membership?.branch_ids == null || membership.branch_ids.includes(b.id)));
-      setMembers(scope); setAdminEligible(eligible); setState(result);
+      setMembers(scope); setState(result);
       setSession({ tenantId: tenant?.id ?? '', branchId: branch?.id ?? '', role: membership?.role ?? 'Atendente', name: auth.user.email ?? 'Usuário', admin: isAdmin });
       setLoadedKey(key);
     })().catch(e => { if (request === epoch.current) { setError(errorText(e)); setState(emptyState()); } }).finally(() => { if (request === epoch.current) setLoading(false); });
@@ -156,11 +131,10 @@ function RealRoutes() {
   if (!authReady || loading) return <main className="page" role="status">Carregando sua conta…</main>;
   if (!auth) return <Navigate to="/login" replace/>;
   if (error) return <main className="page"><h1>Operação indisponível</h1><p role="alert">{error}</p><button className="btn" onClick={refresh}>Recarregar</button><button className="btn" onClick={() => void logout()}>Sair</button><Link to="/">Empresas</Link></main>;
-  if (location.pathname === '/mfa') return <Mfa refresh={refresh}/>;
-  if (adminRoute && !session.admin) return adminEligible ? <Navigate to="/mfa" replace/> : <main className="page"><h1>Acesso administrativo negado</h1><Link to="/">Voltar</Link></main>;
+  if (adminRoute && !session.admin) return <main className="page"><h1>Acesso administrativo negado</h1><Link to="/">Voltar</Link></main>;
   if (slug && !session.branchId) return <main className="page"><h1>Nenhuma filial autorizada</h1><Link to="/">Voltar</Link></main>;
   return <DemoContext.Provider value={context}><Routes>
-    <Route path="/" element={<main className="page"><h1>Minhas empresas</h1>{state.tenants.filter(t => members.some(m => m.tenant_id === t.id)).map(t => <p key={t.id}><Link className="btn" to={`/loja/${t.slug}/dashboard`}>{t.name}</Link></p>)}<Link className="btn primary" to="/empresa/nova">Cadastrar empresa</Link>{adminEligible && <Link className="btn" to={session.admin ? '/admin' : '/mfa'}>Administração da plataforma</Link>}<button className="btn" onClick={() => void logout()}>Sair</button><p><a href="/demonstracao">Abrir demonstração isolada</a></p></main>}/>
+    <Route path="/" element={<main className="page"><h1>Minhas empresas</h1>{state.tenants.filter(t => members.some(m => m.tenant_id === t.id)).map(t => <p key={t.id}><Link className="btn" to={`/loja/${t.slug}/dashboard`}>{t.name}</Link></p>)}<Link className="btn primary" to="/empresa/nova">Cadastrar empresa</Link>{session.admin && <Link className="btn" to="/admin">Administração da plataforma</Link>}<button className="btn" onClick={() => void logout()}>Sair</button><p><a href="/demonstracao">Abrir demonstração isolada</a></p></main>}/>
     <Route path="/empresa/nova" element={<Onboarding refresh={refresh}/>}/>
     <Route path="/convite/:token" element={<Invite refresh={refresh}/>}/>
     <Route path="/loja/:tenantSlug" element={<Layout/>}>

@@ -238,11 +238,12 @@ describe('Super Admin, cobrança e webhooks', () => {
     await db.query('insert into public.platform_admins (user_id) values ($1)', [admin]);
   });
 
-  test('Super Admin exige MFA (aal2); usuário comum nunca', async () => {
-    await fails(rpc(admin, 'admin_save_coupon', [{ code: 'X1' }]), /Super Admin/);
+  test('Super Admin só com linha em platform_admins; usuário comum nunca, nem com aal2', async () => {
     await fails(rpc(A.user, 'admin_save_coupon', [{ code: 'X1' }], 'aal2'), /Super Admin/);
-    expect(await as(db, admin, 'select id from public.tenants', [], 'aal2')).toHaveLength(await db.query('select 1 from public.tenants').then(r => r.rows.length));
-    expect(await as(db, admin, 'select id from public.tenants', [], 'aal1')).toEqual([]);
+    await fails(rpc(null, 'admin_save_coupon', [{ code: 'X1' }]), /permission denied|Super Admin/);
+    expect(await as(db, admin, 'select id from public.tenants')).toHaveLength(await db.query('select 1 from public.tenants').then(r => r.rows.length));
+    expect(await as(db, A.user, 'select id from public.tenants')).toHaveLength(1);
+    await fails(as(db, A.user, 'insert into public.platform_admins(user_id) values ($1)', [A.user]), /permission denied/);
   });
 
   test('fatura com cupom; pagamento só via confirmação de servidor; webhook duplicado é ignorado', async () => {
