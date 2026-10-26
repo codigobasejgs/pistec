@@ -39,9 +39,37 @@ test('offline: telas já instaladas abrem e dados locais persistem', async ({ pa
   await expect(page.getByRole('status').filter({ hasText: 'Sem conexão com o servidor' })).toBeVisible();
   await page.goto(`${BASE}/loja/moto-prime/financeiro`);
   await expect(page.locator('main h1')).toBeVisible();
-  await context.setOffline(false);
+  const pill = page.getByRole('status').filter({ hasText: 'Sem conexão com o servidor' });
+  // Verificação manual ainda offline mantém o aviso. Clicar depois de reconectar disputa com o evento `online`.
   await page.getByRole('button', { name: 'Verificar conexão' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Sem conexão com o servidor' })).toHaveCount(0);
+  await expect(pill).toBeVisible();
+  await context.setOffline(false); // evento `online` reverifica sozinho
+  await expect(pill).toHaveCount(0);
+});
+
+test('push: o service worker do PWA exibe a notificação recebida e só abre rotas internas', async ({ page, context }) => {
+  await context.grantPermissions(['notifications'], { origin: BASE });
+  await page.goto(`${BASE}/demonstracao`);
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  // Dispara um PushEvent real dentro do service worker (o mesmo handler que o push service aciona).
+  // Chrome headless aceita showNotification mas não lista em getNotifications(): a chamada é registrada no próprio SW.
+  const sw = context.serviceWorkers().find(w => w.url().endsWith('/sw.js')) ?? await context.waitForEvent('serviceworker');
+  await sw.evaluate(() => {
+    const g = self as unknown as { registration: ServiceWorkerRegistration; __shown: unknown[] };
+    g.__shown = [];
+    const original = g.registration.showNotification.bind(g.registration);
+    g.registration.showNotification = (title: string, options?: NotificationOptions) => { g.__shown.push({ title, body: options?.body, url: (options?.data as { url: string }).url }); return original(title, options); };
+  });
+  const deliver = (data: object) => sw.evaluate(async payload => {
+    const PushEvent = (globalThis as unknown as { PushEvent: new (t: string, i: { data: string }) => Event }).PushEvent;
+    self.dispatchEvent(new PushEvent('push', { data: payload }));
+    await new Promise(r => setTimeout(r, 100));
+  }, JSON.stringify(data));
+  const shown = () => sw.evaluate(() => (self as unknown as { __shown: { title: string; body: string; url: string }[] }).__shown);
+  await deliver({ title: 'Estoque baixo', body: 'Abra o PISTEC para ver os detalhes.', url: '/app/loja/x/notificacoes', tag: 'stock.low' });
+  await expect.poll(shown).toEqual([{ title: 'Estoque baixo', body: 'Abra o PISTEC para ver os detalhes.', url: '/app/loja/x/notificacoes' }]);
+  await deliver({ title: 'Phishing', url: 'https://evil.example/login', tag: 'x' });
+  await expect.poll(async () => (await shown()).find(n => n.title === 'Phishing')?.url).toBe('/app'); // URL externa vira /app
 });
 
 test('atualização A→B: aviso discreto, nada recarrega sozinho, dados preservados', async ({ page }) => {

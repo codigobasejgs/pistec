@@ -22,6 +22,7 @@ import RealSettings from './Settings';
 import Notifications from './Notifications';
 import Assistant from './Assistant';
 import RealAdmin from './Admin';
+import RealWhatsApp from './WhatsApp';
 
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
@@ -165,7 +166,7 @@ function RealRoutes() {
       <Route path="notificacoes" element={<Notifications/>}/>
       <Route path="assistente" element={<Assistant/>}/>
       {['configuracoes','minha-assinatura','funcionarios','ajuda','integracoes'].map(path => <Route key={path} path={path} element={<RealSettings key={path}/>}/>)}
-      <Route path="whatsapp" element={<RealSettings/>}/>
+      <Route path="whatsapp" element={<RealWhatsApp/>}/>
       <Route path=":module" element={<Records/>}/>
       <Route path="*" element={<main className="page"><h1>Módulo em integração</h1><p>Este módulo ainda não está habilitado no ambiente real. Nenhuma operação foi simulada.</p></main>}/>
     </Route>

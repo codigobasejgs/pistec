@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { rpc, useDemo } from '../store';
 import { date, money } from '../lib';
 import { PageHeader, Panel } from '../ui';
+import Integrations from './Integrations';
 
 export default function RealAdmin() {
   const { state, session, perform } = useDemo();
@@ -15,6 +16,7 @@ export default function RealAdmin() {
     finally{setPending(false);}
   }
   return <main className="page"><PageHeader title="Super Admin PISTEC" subtitle="Sessão com verificação em duas etapas confirmada."/><Link to="/">Minhas empresas</Link>{error&&<p role="alert">{error}</p>}{status&&<p role="status">{status}</p>}
+    <Integrations/>
     <Panel title="Empresas cadastradas">{state.tenants.length===0&&<p>Nenhuma empresa cadastrada.</p>}{state.tenants.map(t=><form key={t.id} className="toolbar" onSubmit={e=>{
       e.preventDefault(); const f=new FormData(e.currentTarget);
       void run(()=>perform(()=>{throw new Error('Operação real');},rpc('admin_save_tenant',{p:{id:t.id,name:t.name,email:t.email,planId:String(f.get('planId')),status:String(f.get('status'))}})),'Empresa atualizada.');

@@ -14,6 +14,21 @@ Este documento registra com transparência todas as limitações identificadas, 
 
 Resolvido nesta auditoria: faturas recém-geradas agora aparecem no topo (antes iam para a página 2).
 
+### Backend real — auditoria 2026-10-26 (detalhes em `PISTEC_3_AUDITORIA_COMPLETA.md`)
+
+| ID | Severidade | Descrição | Estado |
+|---|:---:|---|---|
+| **BE-01** | P1 | Worker e `run_billing_cycle` sem agendamento | **Resolvido** e aplicado no remoto (pg_cron) |
+| **BE-02** | P1 | SMTP padrão do Supabase: 2 e-mails/h para cadastro, convite e recuperação | Aberto (domínio Resend) |
+| **BE-03** | P2 | Notificações coletivas visíveis para qualquer papel | **Resolvido** no remoto |
+| **BE-04** | P2 | Pagamento em fatura cancelada descartado; duplicado sem alerta | **Resolvido** no remoto |
+| **BE-05** | P3 | `billing-checkout` concorrente podia gerar dois links | **Resolvido** (v5 publicada) |
+| **BE-06** | P2 | Push, e-mail e WhatsApp implementados; funções novas e worker novo **não publicados** | Aguarda autorização de deploy |
+| **BE-07** | P3 | `zod@3` com aviso GHSA | **Resolvido** (`zod@4`, `vitest@5`; audit 0) |
+| **BE-08** | P2 | Push real não verificado: rede desta máquina não alcança `fcm.googleapis.com` | Rodar `scripts/push-check.mjs` em outra rede |
+| **BE-09** | P2 | Bot WhatsApp com Gemini e Storage não implementados | Aberto |
+| **BE-10** | P3 | Concorrência real (2 conexões) não testada: sem Docker | Aberto |
+
 ---
 
 ## 2. Limitações Inerentes ao Modo de Demonstração Frontend

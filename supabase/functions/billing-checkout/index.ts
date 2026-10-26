@@ -15,7 +15,12 @@ serve(async request => {
   if (invoice.checkout_url) return { url: invoice.checkout_url, invoiceId: id };
   const amount = Number(invoice.amount);
   const url = await createCheckout({ id, amount, description: `Assinatura PISTEC ${invoice.plan_id} (${invoice.period})` });
-  const { error: updateError } = await service().from('billing_invoices').update({ checkout_url: url }).eq('id', id).in('status', ['Pendente','Vencida']);
+  // Só o primeiro link é persistido: chamadas concorrentes recebem o mesmo checkout (evita pagamento em dobro).
+  const db = service();
+  const { data: saved, error: updateError } = await db.from('billing_invoices').update({ checkout_url: url }).eq('id', id).in('status', ['Pendente','Vencida']).is('checkout_url', null).select('checkout_url');
   if (updateError) throw new HttpError(503, 'Checkout gerado; persistência indisponível. Contate o suporte antes de tentar novamente.');
-  return { url, invoiceId: id };
+  if (saved?.length) return { url, invoiceId: id };
+  const { data: current } = await db.from('billing_invoices').select('checkout_url').eq('id', id).in('status', ['Pendente','Vencida']).maybeSingle();
+  if (!current?.checkout_url) throw new HttpError(409, 'Fatura não está mais disponível para pagamento.');
+  return { url: current.checkout_url, invoiceId: id };
 });

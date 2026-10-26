@@ -58,7 +58,7 @@ export async function openInvoiceCheckout(invoiceId: string): Promise<'awaiting'
   return 'awaiting'; // Retorno do navegador nunca confirma pagamento.
 }
 
-async function scopedRows<T>(table: string, columns: string, tenantId: string, schema: z.ZodType<T, z.ZodTypeDef, unknown>): Promise<T[]> {
+async function scopedRows<T>(table: string, columns: string, tenantId: string, schema: z.ZodType<T>): Promise<T[]> {
   const result: T[] = [];
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await supabase.from(table).select(columns).eq('tenant_id', tenantId).order('id').range(offset, offset + 499);

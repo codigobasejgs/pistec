@@ -1,7 +1,17 @@
 import { body, env, HttpError, serve, service, text, uuid } from '../_shared/http.ts';
 import { checkPayment, paymentMatches } from '../_shared/infinitepay.ts';
 
+// Documentação InfinitePay (2026-10-26): webhook sem assinatura; reenvio só quando a resposta é 400.
+// Por isso toda falha recuperável vira 400; 401 (token errado) não deve gerar reenvio.
 serve(async request => {
+  try { return await handle(request); }
+  catch (error) {
+    if (error instanceof HttpError && (error.status === 401 || error.status === 400)) throw error;
+    throw new HttpError(400, 'Falha temporária; evento será reenviado.');
+  }
+});
+
+async function handle(request: Request) {
   // Token privado de endpoint é defesa adicional; confirmação obrigatória via payment_check.
   const supplied = new URL(request.url).searchParams.get('token') ?? '';
   const expected = env('BILLING_WEBHOOK_TOKEN');
@@ -30,9 +40,11 @@ serve(async request => {
     p_invoice: invoiceId, p_transaction: transaction, p_amount: result.amount, p_paid_amount: result.paid_amount,
     p_capture: result.capture_method, p_slug: slug,
   });
-  if (confirmError) throw new HttpError(503, 'Confirmação pendente; repita o evento.');
-  if (!['paid','duplicate','already_paid'].includes(confirmed)) throw new HttpError(409, 'Fatura não aceita este pagamento; conciliação manual necessária.');
+  // InfinitePay só reenvia quando a resposta é 400; falhas transitórias usam 400 para garantir nova tentativa.
+  if (confirmError) throw new HttpError(400, 'Confirmação pendente; repita o evento.');
+  // cancelled_invoice: transação registrada e Super Admin alertado (billing.review); reenvio não muda nada.
+  if (!['paid','duplicate','already_paid','cancelled_invoice'].includes(confirmed)) throw new HttpError(400, 'Fatura não aceita este pagamento; conciliação manual necessária.');
   const { error: finishError } = await db.from('webhook_events').update({ status: 'processed', processed_at: new Date().toISOString(), error: null }).eq('provider','InfinitePay').eq('event_key',key);
   if (finishError) throw new HttpError(503, 'Pagamento confirmado; evento aguardando finalização.');
   return { received: true };
-});
+}

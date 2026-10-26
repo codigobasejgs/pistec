@@ -30,3 +30,28 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('message', event => { if (event.data === 'SKIP_WAITING') self.skipWaiting(); });
+
+// Web Push (mesmo service worker do PWA). Conteúdo genérico: detalhes só após login.
+// Só abre rotas internas /app/*; qualquer outra URL vira /app.
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { /* payload inválido: aviso genérico */ }
+  const url = typeof data.url === 'string' && data.url.startsWith('/app/') ? data.url : '/app';
+  event.waitUntil(self.registration.showNotification(typeof data.title === 'string' ? data.title.slice(0, 80) : 'PISTEC', {
+    body: typeof data.body === 'string' ? data.body.slice(0, 160) : 'Abra o PISTEC para ver os detalhes.',
+    icon: '/icons/icon-192x192.png', badge: '/icons/icon-96x96.png',
+    tag: typeof data.tag === 'string' ? data.tag.slice(0, 60) : undefined, data: { url },
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || '/app', self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => c.url.startsWith(self.location.origin + '/app'));
+    return open ? open.navigate(url).then(c => (c || open).focus()) : self.clients.openWindow(url);
+  }));
+});
+
+// Navegador renovou a inscrição: a página reenvia ao servidor na próxima abertura (usePush).
+self.addEventListener('pushsubscriptionchange', () => {});

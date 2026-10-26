@@ -46,6 +46,31 @@ test('reserva de quota IA impede segunda chamada sem depender do provedor', asyn
   expect((await take())[0].id).toBeNull();
 });
 
+test('notificação coletiva respeita o papel: Mecânico não vê diferença de caixa', async () => {
+  const mechanic = await createUser(db, 'mecanico@security.invalid');
+  await db.query(`insert into public.memberships(tenant_id,user_id,role) values($1,$2,'Mecânico')`, [owner.tenant, mechanic]);
+  const { rows: [event] } = await db.query<{ id: number }>(`insert into public.outbox_events(tenant_id,type,payload,status) values($1,'cash.difference','{}','processing') returning id`, [owner.tenant]);
+  await service(db, 'select public.deliver_internal_event($1)', [event.id]);
+  const read = (user: string) => as(db, user, `select 1 from public.notifications where source_event_id=$1`, [event.id]);
+  expect(await read(owner.user)).toHaveLength(1);
+  expect(await read(mechanic)).toEqual([]);
+});
+
+test('pagamento em fatura cancelada ou repetido é registrado e exige conciliação, sem reativar', async () => {
+  const invoice = await as<{ r: string }>(db, owner.user, `select public.request_subscription_invoice($1,'premium','monthly','','audit-1') r`, [owner.tenant]).then(r => r[0].r);
+  const { rows: [{ amount }] } = await db.query<{ amount: number }>('select amount::int from public.billing_invoices where id=$1', [invoice]);
+  const confirm = (nsu: string) => service<{ r: string }>(db, 'select app.svc_confirm_payment($1,$2,$3,$3,$4,null,null,null) r', [invoice, nsu, amount, 'pix']).then(r => r[0].r);
+  const reviews = () => db.query(`select 1 from public.outbox_events where type='billing.review' and payload->>'invoiceId'=$1`, [invoice]).then(r => r.rows.length);
+  expect(await confirm('nsu-a')).toBe('paid');
+  expect(await confirm('nsu-b')).toBe('already_paid');
+  expect(await reviews()).toBe(1);
+  await db.query(`update public.billing_invoices set status='Cancelada' where id=$1`, [invoice]);
+  expect(await confirm('nsu-c')).toBe('cancelled_invoice');
+  expect(await confirm('nsu-c')).toBe('duplicate');
+  expect(await reviews()).toBe(2);
+  expect((await db.query('select 1 from public.billing_transactions where invoice_id=$1', [invoice])).rows).toHaveLength(3);
+});
+
 test('transferência repete sem duplicar e rejeita chave com outro conteúdo', async () => {
   const branch = uuid();
   await db.query(`insert into public.branches(id,tenant_id,name) values($1,$2,'Destino')`, [branch, owner.tenant]);
