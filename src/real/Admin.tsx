@@ -12,6 +12,7 @@ import { Alerts, Broadcasts, Leads, Support } from './admin/Operations';
 import { AdminPush, IntegrationDetail, IntegrationsHub, Jobs } from './admin/Tech';
 import { Admins, AuditLog, Permissions, PlatformSettings, SecurityPage } from './admin/Security';
 import { HelpCenter, Tutorials } from './admin/Help';
+import Apps from './admin/Apps';
 
 /** Super Admin: o perfil vem do banco (platform_admins). Cada ação é revalidada no servidor. */
 export default function RealAdmin() {
@@ -31,7 +32,7 @@ export default function RealAdmin() {
     <Route index element={<Dashboard/>}/><Route path="dashboard" element={<Navigate to="/admin" replace/>}/>
     <Route path="analytics" element={<Dashboard analytics/>}/><Route path="atividades" element={<AuditLog compact/>}/><Route path="alertas" element={<Alerts/>}/>
     <Route path="empresas" element={<Tenants/>}/><Route path="empresas/testes" element={<Tenants view="testes"/>}/><Route path="empresas/inadimplentes" element={<Tenants view="inadimplentes"/>}/>
-    <Route path="empresas/:id" element={<TenantDetail/>}/><Route path="onboarding" element={<Tenants view="onboarding"/>}/><Route path="leads" element={<Leads/>}/>
+    <Route path="empresas/:id" element={<TenantDetail/>}/><Route path="onboarding" element={<Tenants view="onboarding"/>}/><Route path="leads" element={<Leads/>}/><Route path="aplicativos" element={<Apps/>}/>
     <Route path="planos" element={<Plans/>}/><Route path="assinaturas" element={<Subscriptions/>}/><Route path="faturas" element={<Invoices/>}/><Route path="cobrancas" element={<Navigate to="/admin/faturas" replace/>}/>
     <Route path="cupons" element={<Coupons/>}/><Route path="financeiro" element={<Finance/>}/>
     <Route path="suporte" element={<Support/>}/><Route path="comunicados" element={<Broadcasts/>}/><Route path="notificacoes" element={<AdminPush/>}/><Route path="automacoes" element={<Jobs/>}/>

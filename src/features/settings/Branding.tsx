@@ -6,6 +6,7 @@ import { can } from '../../domain';
 import { imageData } from '../../lib';
 import { Badge, Field, PageHeader, Panel, useNotice } from '../../ui';
 import type { Branding, Theme } from '../../types';
+import MyApp from './MyApp';
 
 export const PALETTES: { name: string; primary: string; secondary: string; accent: string; sidebar: string; theme: Theme }[] = [
   { name: 'PISTEC Original', primary: '#007bff', secondary: '#00e5ff', accent: '#ffb020', sidebar: '#0c172b', theme: 'dark' },
@@ -66,6 +67,7 @@ export default function BrandingPage() {
         <Field label="Rodapé dos documentos"><input value={branding.footer} maxLength={180} onChange={e => set('footer', e.target.value)}/></Field>
       </div>
         <button className="btn" onClick={() => { if (confirm('Restaurar as cores e preferências padrão PISTEC na prévia? (só será aplicado ao salvar)')) setBranding(b => ({ ...b, ...DEFAULT_BRANDING, logo: '' })); }}><RotateCcw size={15}/>Restaurar padrão</button></Panel>
+      <MyApp logo={branding.logo} primary={branding.primary}/>
     </div>
       <Panel className="branding-preview"><div data-tour="brand-preview"><div className="panel-heading"><h2><Palette size={18}/>Prévia em tempo real</h2><div className="toolbar"><button className={`icon-button ${!mobile ? 'is-active' : ''}`} aria-pressed={!mobile} aria-label="Prévia desktop" onClick={() => setMobile(false)}><Monitor size={18}/></button><button className={`icon-button ${mobile ? 'is-active' : ''}`} aria-pressed={mobile} aria-label="Prévia mobile" onClick={() => setMobile(true)}><Smartphone size={18}/></button></div></div>
         <div className={`preview-frame radius-${branding.radius ?? 'default'} ${mobile ? 'phone' : ''}`} data-theme={previewTheme} style={{ '--brand': branding.primary, '--secondary': branding.secondary, '--accent': branding.accent, '--chart-line': branding.secondary, fontFamily: `${branding.font}, "Segoe UI", system-ui, sans-serif` } as CSSProperties}>

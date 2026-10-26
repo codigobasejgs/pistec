@@ -24,4 +24,4 @@ function pwaPrecache(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [react(), pwaPrecache()], test: { include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'supabase/tests/**/*.test.ts'] }, build: { chunkSizeWarningLimit: 600 } });
+export default defineConfig({ plugins: [react(), pwaPrecache()], test: { include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'supabase/tests/**/*.test.ts', 'api/**/*.test.ts'] }, build: { chunkSizeWarningLimit: 600 } });

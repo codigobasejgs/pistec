@@ -20,6 +20,7 @@ test('mixed sale survives reload and remains isolated by tenant', async ({ page 
   const beforeCash = before.cashRegisters.find(row => row.tenantId === 'tenant-premium' && row.branchId === 'branch-premium-matriz' && !row.closedAt)!;
   await page.getByRole('textbox', { name: 'Nome, SKU ou código de barras' }).fill(product.sku);
   await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await page.getByRole('button', { name: /^Cobrar/ }).click();
   await page.getByRole('textbox', { name: 'Valor do pagamento 1 (R$)', exact: true }).fill('10.00');
   await page.getByRole('button', { name: 'Outra forma' }).click();
   await page.getByRole('textbox', { name: 'Valor do pagamento 2 (R$)', exact: true }).fill(((product.price - 1000) / 100).toFixed(2));
@@ -57,6 +58,7 @@ test('suspended cart resumes after reload without reserving stock', async ({ pag
   await page.reload();
   await page.getByRole('button', { name: 'Retomar', exact: true }).click();
   await expect(page.getByRole('spinbutton', { name: 'Quantidade', exact: true })).toHaveValue('1');
+  await page.getByRole('button', { name: /^Cobrar/ }).click();
   await page.getByRole('button', { name: 'Completar', exact: true }).click();
   await page.getByRole('button', { name: 'Finalizar venda' }).click();
   await expect(page.getByRole('dialog', { name: 'Venda concluída' })).toBeVisible();
@@ -96,4 +98,38 @@ test('mobile ERP keeps forms and navigation usable without page overflow', async
   await expect(dialog).not.toBeVisible();
   await page.getByRole('textbox', { name: 'Nome, documento, telefone ou e-mail' }).fill('Cliente Mobile E2E');
   await expect(page.getByText('Cliente Mobile E2E').first()).toBeVisible();
+});
+
+test('PDV Elite: leitor (código + Enter) adiciona, F9 abre pagamento, Esc fecha; celular sem rolagem lateral', async ({ page }) => {
+  await page.goto('/loja/moto-prime/pdv');
+  await expect(page.getByRole('heading', { name: 'Frente de caixa' })).toBeVisible();
+  const before = await snapshot(page);
+  const product = before.products.find(row => row.tenantId === 'tenant-premium' && row.barcode && before.balances.some(b => b.productId === row.id && b.quantity - b.reserved > 0))!;
+  await page.keyboard.press('F2');
+  await expect(page.getByRole('textbox', { name: 'Nome, SKU ou código de barras' })).toBeFocused();
+  await page.keyboard.type(product.barcode); await page.keyboard.press('Enter');
+  await expect(page.getByRole('spinbutton', { name: 'Quantidade', exact: true })).toHaveValue('1');
+  await expect(page.getByRole('textbox', { name: 'Nome, SKU ou código de barras' })).toHaveValue('');
+  await page.keyboard.type('codigo-inexistente-xyz'); await page.keyboard.press('Enter');
+  await expect(page.getByText('Nenhum produto com este código nesta empresa.')).toBeVisible();
+  await page.keyboard.press('F9');
+  await expect(page.getByRole('dialog', { name: 'Pagamento' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pagamento' })).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: /^3\. Pagamento/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Pagamento' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+});
+
+test('Meu Aplicativo: gera ícones do logotipo e mostra link e QR; demonstração não publica', async ({ page }) => {
+  await page.goto('/loja/moto-prime/personalizacao');
+  await expect(page.getByRole('heading', { name: 'Meu Aplicativo' })).toBeVisible();
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAOUlEQVR4nO3OMQEAAAjDMMC/56ECjkQBnW1JyZp+HQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4EWfIAH+8V8hjAAAAAElFTkSuQmCC', 'base64');
+  await page.getByLabel('Logotipo').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Gerar ícones do logotipo' }).click();
+  await expect(page.getByRole('img', { name: 'Ícone adaptável (Android)' })).toBeVisible();
+  await expect(page.getByText(/\/app\/m\/moto-prime/)).toBeVisible();
+  await expect(page.getByRole('img', { name: /QR Code para/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Publicar aplicativo' })).toBeDisabled();
 });

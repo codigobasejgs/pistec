@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bell, BellRing, Bot, Building2, CircleAlert, CircleHelp, ClipboardList, CreditCard, FileText, GraduationCap, Headphones, KeyRound,
+import { Activity, AppWindow, BarChart3, Bell, BellRing, Bot, Building2, CircleAlert, CircleHelp, ClipboardList, CreditCard, FileText, GraduationCap, Headphones, KeyRound,
   LayoutDashboard, ListChecks, Mail, Megaphone, MessageCircle, Plug, Receipt, ScrollText, Settings, ShieldCheck, Tags, Ticket, UserPlus, Users, Wallet, Webhook, Workflow, type LucideIcon } from 'lucide-react';
 
 export type AdminNavItem = { path: string; label: string; icon: LucideIcon; group: string; perm?: string };
@@ -12,6 +12,7 @@ export const adminNav: AdminNavItem[] = [
   { path: 'empresas/testes', label: 'Empresas em teste', icon: ListChecks, group: 'Clientes e empresas' },
   { path: 'empresas/inadimplentes', label: 'Inadimplentes e suspensas', icon: CircleAlert, group: 'Clientes e empresas' },
   { path: 'leads', label: 'Leads comerciais', icon: UserPlus, group: 'Clientes e empresas', perm: 'leads.manage' },
+  { path: 'aplicativos', label: 'Aplicativos personalizados', icon: AppWindow, group: 'Clientes e empresas' },
   { path: 'onboarding', label: 'Onboarding', icon: GraduationCap, group: 'Clientes e empresas' },
   { path: 'planos', label: 'Planos SaaS', icon: Tags, group: 'Assinaturas e comercial' },
   { path: 'assinaturas', label: 'Assinaturas', icon: FileText, group: 'Assinaturas e comercial' },

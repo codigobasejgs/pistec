@@ -58,6 +58,7 @@ async function addToCart(page: Page, sku: string, quantity: number) {
   await page.getByRole('textbox', { name: 'Nome, SKU ou código de barras' }).fill(sku);
   await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Quantidade', exact: true }).fill(String(quantity));
+  await page.getByRole('button', { name: /^Cobrar/ }).click();
 }
 
 async function finishSale(page: Page) {

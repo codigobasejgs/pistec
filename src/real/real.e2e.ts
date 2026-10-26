@@ -60,6 +60,7 @@ test('ambiente real: login, onboarding, produto, estoque, caixa, venda e finance
     await page.getByRole('textbox', { name: 'Fundo de abertura (R$)' }).fill('50,00');
     await page.getByRole('dialog', { name: 'Abrir caixa' }).getByRole('button', { name: 'Abrir caixa' }).click();
     await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+    await page.getByRole('button', { name: /^Cobrar/ }).click();
     await page.getByRole('textbox', { name: 'Valor do pagamento 1 (R$)', exact: true }).fill('100,00');
     await page.getByRole('button', { name: 'Finalizar venda' }).click();
     await expect(page.getByRole('dialog', { name: 'Venda concluída' })).toBeVisible();

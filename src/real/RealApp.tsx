@@ -23,6 +23,7 @@ import Notifications from './Notifications';
 import Assistant from './Assistant';
 import RealAdmin from './Admin';
 import RealWhatsApp from './WhatsApp';
+import BrandApp from './BrandApp';
 
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
@@ -128,6 +129,8 @@ function RealRoutes() {
   };
   const authPages: Record<string, ReactNode> = { '/login': <AuthPage page="login"/>, '/cadastro': <AuthPage page="cadastro"/>, '/recuperar': <AuthPage page="recuperar"/>, '/nova-senha': <AuthPage page="nova-senha"/> };
   if (authPages[location.pathname]) return authPages[location.pathname];
+  // Aplicativo da empresa (White Label): entrada pública com login da marca.
+  if (/^\/m\/[a-z0-9-]+\/?$/.test(location.pathname)) return <Routes><Route path="/m/:slug" element={<BrandApp/>}/></Routes>;
   if (!authReady || loading) return <main className="page" role="status">Carregando sua conta…</main>;
   if (!auth) return <Navigate to="/login" replace/>;
   if (error) return <main className="page"><h1>Operação indisponível</h1><p role="alert">{error}</p><button className="btn" onClick={refresh}>Recarregar</button><button className="btn" onClick={() => void logout()}>Sair</button><Link to="/">Empresas</Link></main>;
