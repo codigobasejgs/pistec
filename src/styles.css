@@ -615,5 +615,5 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); 
 .label-pick input[type=number] { min-height: 32px; padding: 4px 6px; }
 .public-doc { min-height: 100vh; background: #e9edf3; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; color: #0b1220; }
 .public-doc iframe { width: min(860px, 100%); height: 80vh; border: 0; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
-.public-doc .toolbar a, .public-doc .toolbar button { color: #0b1220; }
+.public-doc .toolbar .btn { background: #ffffff; border-color: #c5cfdd; color: #0b1220; }
 @media (max-width: 760px) { .doc-preview { height: 60vh; } .doc-actions .btn { flex: 1 1 calc(50% - 8px); } }
