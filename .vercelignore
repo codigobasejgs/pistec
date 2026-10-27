@@ -3,7 +3,13 @@ dist
 test-results
 playwright-report
 references
-supabase
+# Só os módulos de documentos compartilhados (usados pelo frontend) sobem para a Vercel.
+supabase/*
+!supabase/functions
+supabase/functions/*
+!supabase/functions/_shared
+supabase/functions/_shared/*
+!supabase/functions/_shared/documents
 scripts
 docs/evidence
 .env
