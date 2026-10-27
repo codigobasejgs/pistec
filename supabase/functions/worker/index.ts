@@ -1,6 +1,6 @@
 import { env, HttpError, serve, service } from '../_shared/http.ts';
 import { sendPush } from '../_shared/webpush.ts';
-import { permanent, render } from '../_shared/email.ts';
+import { displayFrom, permanent, render } from '../_shared/email.ts';
 
 // Disparado pelo pg_cron a cada minuto. Cada etapa é independente: falha numa não bloqueia as outras.
 serve(async request => {
@@ -59,7 +59,8 @@ async function email(db: ReturnType<typeof service>) {
       const { subject, html, text } = render(m.template, m.data ?? {}, appUrl);
       const r = await fetch('https://api.resend.com/emails', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'Idempotency-Key': m.idempotency_key.slice(0, 256) },
-        body: JSON.stringify({ from, to: [m.to_email], subject, html, text, tags: [{ name: 'template', value: m.template }] }) });
+        body: JSON.stringify({ from: m.template === 'document' && m.data?.store ? displayFrom(from, String(m.data.store)) : from, to: [m.to_email], subject, html, text, tags: [{ name: 'template', value: m.template }],
+          ...(m.template === 'document' && typeof m.data?.replyTo === 'string' ? { reply_to: m.data.replyTo } : {}) }) });
       const body = await r.json().catch(() => ({}));
       if (r.ok && typeof body.id === 'string') providerId = body.id;
       else { failure = `http_${r.status}:${String(body.name ?? '').slice(0, 60)}`; perm = permanent(r.status); }

@@ -1,11 +1,13 @@
 // Templates transacionais PISTEC (HTML com tabelas e estilos inline: compatível com Gmail/Outlook/celular).
 // Todo dado variável passa por esc(). Links só para APP_URL.
+import { TITLES } from './documents/model.ts';
 
 export const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const money = (cents: unknown) => (Number(cents) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const date = (iso: unknown) => { const d = new Date(String(iso) + (String(iso).length === 10 ? 'T12:00:00Z' : '')); return isNaN(+d) ? '' : d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); };
 
 type Data = Record<string, unknown>;
+const label = (d: Data) => TITLES[String(d.title) as keyof typeof TITLES] ?? 'Documento';
 type Template = { subject: (d: Data) => string; lines: (d: Data) => string[]; cta?: { label: string; path: (d: Data) => string } };
 
 export const templates: Record<string, Template> = {
@@ -15,6 +17,9 @@ export const templates: Record<string, Template> = {
   payment_confirmed: { subject: () => 'Pagamento confirmado', lines: d => [`Recebemos o pagamento de <strong>${esc(money(d.amount))}</strong>.`, `Sua assinatura está ativa até <strong>${esc(date(d.paidUntil))}</strong>.`] },
   invoice_overdue: { subject: () => 'Fatura vencida — evite a suspensão', lines: d => [`A fatura de <strong>${esc(money(d.amount))}</strong> venceu em <strong>${esc(date(d.dueDate))}</strong>.`, 'Após 5 dias de atraso o acesso fica somente leitura até o pagamento.'], cta: { label: 'Pagar agora', path: () => '/app' } },
   trial_ending: { subject: () => 'Seu teste do PISTEC está terminando', lines: d => [`O teste de <strong>${esc(d.tenant)}</strong> termina em <strong>${esc(date(d.periodEnd))}</strong>.`, 'Escolha um plano em Minha assinatura para continuar sem interrupção.'], cta: { label: 'Escolher plano', path: () => '/app' } },
+  // Documento de loja (comprovante, orçamento, OS): nome da loja; logo não é embutido (data URL é bloqueado por clientes de e-mail).
+  // O link é de consulta segura, com validade.
+  document: { subject: d => `${esc(label(d))} ${esc(d.number)} — ${esc(d.store)}`, lines: d => [`Olá${d.customer ? `, <strong>${esc(d.customer)}</strong>` : ''}.`, `<strong>${esc(d.store)}</strong> enviou o documento <strong>${esc(label(d))} ${esc(d.number)}</strong>.`, ...(d.message ? [esc(d.message)] : []), 'O link abaixo vale por 7 dias. Documento não fiscal.'], cta: { label: 'Ver documento', path: d => `/d/${encodeURIComponent(String(d.token))}` } },
   suspended: { subject: () => 'Assinatura suspensa', lines: d => [`A assinatura de <strong>${esc(d.tenant)}</strong> foi suspensa por falta de pagamento.`, 'Seus dados estão preservados. O acesso volta assim que o pagamento for confirmado.'], cta: { label: 'Regularizar', path: () => '/app' } },
 };
 
@@ -56,3 +61,6 @@ export async function verifySvix(secret: string, id: string, timestamp: string, 
   }
   return false;
 }
+
+/** Nome de exibição da loja + endereço técnico verificado do PISTEC (nunca falsifica o domínio do remetente). */
+export const displayFrom = (from: string, store: string) => `${store.replace(/["<>\\\r\n]/g, '').slice(0, 60)} via PISTEC <${(from.match(/<([^>]+)>/)?.[1] ?? from).trim()}>`;

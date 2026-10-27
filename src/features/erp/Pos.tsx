@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Banknote, Camera, Coins, CreditCard, Keyboard, LayoutGrid, List, Lock, Minus, Pause, Play, Plus, ScanBarcode, ShoppingCart, Star, Trash2, UserPlus, X } from 'lucide-react';
+import { Banknote, Camera, Coins, CreditCard, Keyboard, LayoutGrid, List, Lock, Minus, Pause, Play, Plus, Printer, ScanBarcode, ShoppingCart, Star, Trash2, UserPlus, X } from 'lucide-react';
 import { can, closeCash, completeSale, openCash } from '../../domain';
 import { money, uid } from '../../lib';
 import { Badge, Button, Empty, Modal, Stat } from '../../ui';
@@ -9,6 +9,7 @@ import { FormActions, SelectField, TextField, useErp, useNarrow } from './shared
 import { Receipt } from './SalesRecords';
 import { useBusyGuard, usePwa } from '../../pwa';
 import { rpc } from '../../store';
+import DocumentDialog from '../documents/DocumentDialog';
 
 interface CartLine { productId: string; quantity: number }
 const METHODS = ['Dinheiro', 'Pix', 'Crédito', 'Débito'];
@@ -52,7 +53,7 @@ export default function Pos() {
   const [view, setView] = useState<'cards' | 'list'>(() => local.get('pistec-pdv-view') === 'list' ? 'list' : 'cards');
   const favKey = `pistec-pdv-favs-${session.tenantId}`;
   const [favorites, setFavorites] = useState<string[]>(() => { try { return JSON.parse(local.get(favKey) ?? '[]'); } catch { return []; } });
-  const [paper, setPaper] = useState(() => local.get('pistec-pdv-paper') || '80');
+  const [docFor, setDocFor] = useState<Sale | null>(null);
   const search = useRef<HTMLInputElement>(null), customerRef = useRef<HTMLDivElement>(null), firstPayment = useRef<HTMLDivElement>(null);
   // Uma chave por carrinho: reenvio (duplo clique, falha de rede, timeout) usa a MESMA chave e não duplica venda; só renova após concluir/limpar.
   const requestId = useRef<string>(uid());
@@ -268,9 +269,10 @@ export default function Pos() {
       <FormActions pending={pending} onClose={() => setCashModal('')} label={cashModal === 'close' ? 'Fechar caixa' : 'Abrir caixa'}/></form></Modal>
     <Modal title="Cadastro rápido de cliente" open={!!newCustomer} onClose={() => !pending && setNewCustomer(null)}>{newCustomer && <form className="stack" onSubmit={saveCustomer}><TextField label="Nome do cliente" required value={newCustomer.name} onChange={name => setNewCustomer(c => c && { ...c, name })}/><TextField label="Telefone do cliente" required inputMode="numeric" value={newCustomer.phone} onChange={phone => setNewCustomer(c => c && { ...c, phone })}/><p className="muted small">Documento, e-mail e consentimento podem ser completados depois em Clientes.</p><FormActions pending={pending} onClose={() => setNewCustomer(null)} label="Cadastrar e selecionar"/></form>}</Modal>
     <Modal title="Atalhos do PDV" open={shortcuts} onClose={() => setShortcuts(false)}><dl className="kv-grid">{SHORTCUTS.map(([k, d]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{d}</dd></div>)}</dl><p className="muted small">Leitor de código de barras USB/Bluetooth funciona como teclado: leia o código com o campo de busca focado (F2) e o produto entra no carrinho ao final da leitura (Enter).</p></Modal>
+    <DocumentDialog source={docFor ? { kind: 'sale', id: docFor.id, customerId: docFor.customerId } : null} onClose={() => setDocFor(null)}/>
     {camera && <CameraScan onClose={() => setCamera(false)} onCode={code => { setCamera(false); scan(code); }}/>}
-    <Modal title="Venda concluída" open={!!receipt} onClose={() => setReceipt(null)}>{receipt && <div className={`stack receipt-paper paper-${paper}`} data-tour="pdv-receipt">{receipt.change > 0 ? <p className="callout" role="status"><strong style={{ fontSize: '1.4rem' }}>Troco: {money(receipt.change)}</strong></p> : <p className="callout" role="status">Sem troco a devolver.</p>}
+    <Modal title="Venda concluída" open={!!receipt} onClose={() => setReceipt(null)}>{receipt && <div className="stack" data-tour="pdv-receipt">{receipt.change > 0 ? <p className="callout" role="status"><strong style={{ fontSize: '1.4rem' }}>Troco: {money(receipt.change)}</strong></p> : <p className="callout" role="status">Sem troco a devolver.</p>}
       <Receipt sale={receipt} customer={customers.find(customer => customer.id === receipt.customerId)?.name} business={tenant?.name}/>
-      <div className="toolbar no-print"><SelectField label="Formato de impressão" value={paper} onChange={value => { setPaper(value); local.set('pistec-pdv-paper', value); }}><option value="58">Bobina 58 mm</option><option value="80">Bobina 80 mm</option><option value="a4">Folha A4</option></SelectField><Button variant="primary" onClick={() => { setReceipt(null); setTimeout(() => search.current?.focus(), 0); }}>Nova venda</Button></div></div>}</Modal>
+      <div className="toolbar no-print" data-tour="pdv-deliver"><Button icon={<Printer size={16}/>} onClick={() => setDocFor(receipt)}>Imprimir · WhatsApp · E-mail · PDF</Button><Button variant="primary" onClick={() => { setReceipt(null); setTimeout(() => search.current?.focus(), 0); }}>Nova venda</Button></div></div>}</Modal>
   </div>;
 }

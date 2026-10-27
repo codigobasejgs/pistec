@@ -1,0 +1,23 @@
+SIZE 40 mm, 30 mm
+GAP 2 mm, 0 mm
+DIRECTION 1
+REFERENCE 0,0
+CLS
+TEXT 8,8,"2",0,1,1,"Pastilha de freio dianteira"
+TEXT 8,34,"1",0,1,1,"Marca ? PAS-01"
+TEXT 8,52,"3",0,1,1,"R$?49,90"
+BARCODE 8,82,"EAN13",128,1,0,2,2,"7891234567895"
+PRINT 1,1
+CLS
+TEXT 8,8,"2",0,1,1,"Pastilha de freio dianteira"
+TEXT 8,34,"1",0,1,1,"Marca ? PAS-01"
+TEXT 8,52,"3",0,1,1,"R$?49,90"
+BARCODE 8,82,"EAN13",128,1,0,2,2,"7891234567895"
+PRINT 1,1
+CLS
+TEXT 8,8,"2",0,1,1,"Pastilha de freio dianteira"
+TEXT 8,34,"1",0,1,1,"Marca"
+TEXT 8,52,"1",0,1,1,"Freios"
+TEXT 8,70,"3",0,1,1,"R$?49,90"
+BARCODE 8,100,"EAN13",110,1,0,2,2,"7891234567895"
+PRINT 1,1

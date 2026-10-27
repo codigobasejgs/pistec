@@ -6,7 +6,8 @@ test('demonstração não consulta Supabase nem provedores e não inicializa ses
     const url = new URL(request.url());
     if (/supabase|infinitepay|resend|generativelanguage|api\.tubaraoemprestimo/i.test(url.hostname)) requests.push(`${request.method()} ${url.origin}${url.pathname}`);
   });
-  await page.route(/supabase|infinitepay|resend|generativelanguage|api\.tubaraoemprestimo/i, route => route.abort());
+  // Só bloqueia por domínio: no modo dev os módulos compartilhados são servidos em /supabase/functions/_shared/... (mesma origem).
+  await page.route(url => /supabase|infinitepay|resend|generativelanguage|api\.tubaraoemprestimo/i.test(url.hostname), route => route.abort());
   for (const path of ['/demonstracao', '/loja/moto-prime/dashboard', '/loja/moto-prime/produtos', '/loja/moto-prime/pdv', '/loja/moto-prime/financeiro', '/loja/moto-prime/whatsapp']) {
     await page.goto(path);
     await expect(page.locator('h1').first()).toBeVisible();

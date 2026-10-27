@@ -101,6 +101,13 @@ export const tours: Record<string, TourStep[]> = {
     { target: 'app-publish', title: '9. Publique', text: 'O servidor confere o plano e grava a versão. Atualizar gera uma nova versão do ícone.', route: 'personalizacao' },
     { target: 'app-link', title: '10. Compartilhe', text: 'Envie o link ou o QR Code. Android: Instalar. iPhone: Safari → Compartilhar → Adicionar à Tela de Início.', route: 'personalizacao' },
   ],
+  impressao: [
+    { target: 'print-tabs', title: '1. Conheça a Central', text: 'Impressoras, etiquetas, modelos e histórico ficam aqui. Tudo é separado por empresa.', route: 'impressao' },
+    { target: 'print-printers', title: '2. Impressoras desta estação', text: 'Cada impressora fica ligada ao computador ou celular onde foi configurada. Dê um nome a esta estação.', route: 'impressao' },
+    { target: 'print-add', title: '3. Configure com o assistente', text: 'Escolha o tipo, o método, o papel e imprima uma página de teste. Responda como saiu para receber a correção certa.', route: 'impressao' },
+    { target: 'print-wizard', before: 'print-add', title: '4. Papel e calibração', text: 'Bobina 58/80 mm, A4/A5 ou etiqueta. Ajuste posição, escala e espaçamento se a impressão sair deslocada.', route: 'impressao' },
+    { target: 'doc-actions', before: 'print-test', title: '5. Imprimir, WhatsApp, e-mail e PDF', text: 'Todo documento tem as mesmas ações. Reimprimir vira 2ª via automaticamente.', route: 'impressao' },
+  ],
   'minha-assinatura': [
     { target: 'sub-plan', title: 'Seu plano PISTEC', text: 'Plano, situação e vencimento da assinatura SaaS da plataforma.', route: 'minha-assinatura' },
     { target: 'sub-usage', title: 'Uso dos limites', text: 'Usuários, filiais, produtos e instâncias WhatsApp versus os limites contratados.', route: 'minha-assinatura' },

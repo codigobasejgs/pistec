@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Calendar as CalendarIcon, CheckCircle2, Clock, Edit, Eye, Kanban, List, Play, Plus, Trash2, User, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calendar as CalendarIcon, CheckCircle2, Clock, Edit, Eye, FileText, Kanban, List, Play, Plus, Trash2, User, Wrench } from 'lucide-react';
 import { convertRecord, receivePurchase, transitionRecord } from '../../domain';
 import { date, money, today, uid } from '../../lib';
 import { Badge, DataTable, Empty, Modal, PageHeader, Panel, Stat } from '../../ui';
@@ -9,6 +9,9 @@ import CustomerRecords from './CustomerRecords';
 import SalesRecords from './SalesRecords';
 import { configs } from './record-config';
 import { rpc } from '../../store';
+import DocumentDialog from '../documents/DocumentDialog';
+
+const DOC_KINDS = ['orcamentos', 'ordens-servico', 'compras'];
 import { cents, decimal, inPeriod, matches, sumItems } from './logic';
 import { ExportButton, FormActions, ItemEditor, SearchBox, SelectField, TextField, useErp, useSearchQuery } from './shared';
 
@@ -36,7 +39,7 @@ function DomainRecords({ kind }: { kind: string }) {
   const config = configs[kind];
   const [query, setQuery] = useSearchQuery(), [status, setStatus] = useState(''), [start, setStart] = useState(''), [end, setEnd] = useState('');
   const [view, setView] = useState<'table' | 'kanban' | 'calendar' | 'agenda-day' | 'agenda-week'>(config?.kanban ? 'kanban' : 'table');
-  const [ownerFilter, setOwnerFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState(''), [docOpen, setDocOpen] = useState(false);
   const [edit, setEdit] = useState<OperationalRecord | null>(null), [detailId, setDetailId] = useState(''), [note, setNote] = useState('');
   const [lossModal, setLossModal] = useState<OperationalRecord | null>(null), [lossReason, setLossReason] = useState('');
 
@@ -439,8 +442,10 @@ function DomainRecords({ kind }: { kind: string }) {
         <label className="field"><span>Adicionar nota</span><textarea aria-label="Nota de histórico" required value={note} onChange={event => setNote(event.target.value)} /></label>
         <button className="btn primary" disabled={pending}>Salvar nota</button>
       </form>
+      {DOC_KINDS.includes(kind) && <button className="btn primary" data-tour={`${kind}-documents`} onClick={() => setDocOpen(true)}><FileText size={16} aria-hidden="true" /> Documentos e impressão</button>}
       {actions(detail)}
     </div>}</Modal>
+    <DocumentDialog source={docOpen && detail ? { kind: kind as 'orcamentos', id: detail.id, customerId: detail.customerId } : null} onClose={() => setDocOpen(false)} />
 
     <Modal title="Motivo da perda" open={!!lossModal} onClose={() => setLossModal(null)}>
       {lossModal && <form className="stack" onSubmit={event => { event.preventDefault(); if (!lossReason.trim()) { notice('Informe o motivo.'); return; } const rec = lossModal, r = lossReason.trim(); setLossModal(null); setLossReason(''); void transition(rec, 'Perdido', r); }}>

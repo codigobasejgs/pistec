@@ -8,6 +8,22 @@ serve(async request => {
   const { client } = await authenticated(request);
   const input = await body(request, 16000);
   const tenant = uuid(input.tenantId, 'Empresa'), action = text(input.action, 'Ação', 20);
+  if (action === 'document') {
+    // Documento da loja: o banco valida permissão, consentimento, telefone, instância conectada, limite e idempotência (prepare_document_whatsapp).
+    // Envia texto + link seguro com validade (o PDF não fica guardado no servidor; nenhuma URL pública permanente).
+    const { data: prep, error: prepError } = await client.rpc('prepare_document_whatsapp', { p_tenant: tenant, p_document: uuid(input.documentId, 'Documento'),
+      p_customer: uuid(input.customerId, 'Cliente'), p_text: text(input.text, 'Mensagem', 1000), p_key: text(input.key, 'Chave', 100) });
+    if (prepError) throw new HttpError(400, prepError.message);
+    if (prep.duplicate) return { status: prep.status, duplicate: true };
+    const link = new URL(`/d/${prep.token}`, env('APP_URL')).href;
+    let id = '', failure: string | null = null;
+    try { const sent = await evo.sendText(prep.instance, evo.recipient(prep.number), `${prep.text}\n\n${link}`); id = String(sent?.key?.id ?? ''); if (!id) failure = 'sem_confirmacao'; }
+    catch (e) { failure = e instanceof Error ? e.message.slice(0, 120) : 'falha_envio'; }
+    await service().rpc('finish_document_event', { p_event: prep.eventId, p_provider_id: id || null, p_error: failure });
+    if (failure) throw new HttpError(502, 'O WhatsApp não aceitou o envio. Tente novamente em instantes.');
+    // "accepted" = aceito pela Evolution; entrega/leitura não são confirmadas aqui.
+    return { status: 'accepted', id };
+  }
   const { data: authorized, error } = await client.rpc('authorize_whatsapp', { p_tenant: tenant, p_action: action });
   if (error) throw new HttpError(403, error.message);
   const db = service();

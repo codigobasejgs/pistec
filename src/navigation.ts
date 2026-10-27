@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Boxes, ShoppingCart, Monitor, Wrench, Users, Truck, Wallet, MessageCircle, ChartNoAxesCombined, Settings, CalendarDays, Car, FileText, Building2, Bell, ListTodo, Palette, Crown, CircleHelp, Tags, ShieldCheck, ClipboardList, Contact, Workflow, BookOpen, Undo2, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingCart, Monitor, Wrench, Users, Truck, Wallet, MessageCircle, ChartNoAxesCombined, Settings, CalendarDays, Car, FileText, Building2, Bell, ListTodo, Palette, Crown, CircleHelp, Tags, ShieldCheck, ClipboardList, Contact, Workflow, BookOpen, Undo2, Printer, type LucideIcon } from 'lucide-react';
 export interface NavItem { path: string; label: string; icon: LucideIcon; group: string }
 export const nav: NavItem[] = [
   { path:'dashboard',label:'Dashboard',icon:LayoutDashboard,group:'Visão geral' },
@@ -16,6 +16,6 @@ export const nav: NavItem[] = [
   {path:'filiais',label:'Filiais',icon:Building2,group:'Gestão'},
   {path:'whatsapp',label:'WhatsApp',icon:MessageCircle,group:'Relacionamento'},{path:'automacoes',label:'Automações',icon:Workflow,group:'Relacionamento'},
   {path:'tarefas',label:'Tarefas',icon:ListTodo,group:'Relacionamento'},{path:'notificacoes',label:'Notificações',icon:Bell,group:'Relacionamento'},
-  {path:'configuracoes',label:'Configurações',icon:Settings,group:'Sistema'},{path:'personalizacao',label:'Personalização',icon:Palette,group:'Sistema'},
+  {path:'configuracoes',label:'Configurações',icon:Settings,group:'Sistema'},{path:'personalizacao',label:'Personalização',icon:Palette,group:'Sistema'},{path:'impressao',label:'Impressão e documentos',icon:Printer,group:'Sistema'},
   {path:'minha-assinatura',label:'Minha assinatura',icon:Crown,group:'Sistema'},{path:'ajuda',label:'Central de ajuda',icon:CircleHelp,group:'Sistema'},
 ];

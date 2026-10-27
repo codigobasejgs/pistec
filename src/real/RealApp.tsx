@@ -24,6 +24,7 @@ import Assistant from './Assistant';
 import RealAdmin from './Admin';
 import RealWhatsApp from './WhatsApp';
 import BrandApp from './BrandApp';
+import PrintCenter from '../features/documents/PrintCenter';
 
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
@@ -143,7 +144,7 @@ function RealRoutes() {
     <Route path="/loja/:tenantSlug" element={<Layout/>}>
       <Route index element={<Navigate to="dashboard" replace/>}/><Route path="dashboard" element={<Dashboard/>}/><Route path="produtos" element={<Products/>}/><Route path="estoque" element={<Inventory/>}/><Route path="inventario" element={<Inventory/>}/><Route path="pdv" element={<Pos/>}/><Route path="clientes" element={<CustomerRecords/>}/><Route path="vendas" element={<SalesRecords/>}/>
       {['financeiro','contas-pagar','contas-receber','caixa'].map(p => <Route key={p} path={p} element={<Finance key={p}/>}/>)}
-      <Route path="relatorios" element={<Reports/>}/><Route path="personalizacao" element={<BrandingPage/>}/>
+      <Route path="relatorios" element={<Reports/>}/><Route path="personalizacao" element={<BrandingPage/>}/><Route path="impressao" element={<PrintCenter/>}/>
       <Route path="notificacoes" element={<Notifications/>}/>
       <Route path="assistente" element={<Assistant/>}/>
       {['configuracoes','minha-assinatura','funcionarios','ajuda','integracoes'].map(path => <Route key={path} path={path} element={<RealSettings key={path}/>}/>)}
