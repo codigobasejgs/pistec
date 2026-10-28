@@ -12,7 +12,7 @@ const admin = async (email: string, role: string, roles: string[] = []) => { con
 const form = (extra: Record<string, unknown> = {}) => ({ planId: 'profissional', period: 'monthly', requestId: `req-${Math.random()}`,
   company: { legalName: 'Moto Prime Comércio Ltda', tradeName: 'Moto Prime', document: '11.222.333/0001-81', street: 'Rua A', number: '10', district: 'Centro', city: 'São Paulo', state: 'SP', zip: '01001-000', phone: '11999990000', email: 'loja@x.invalid' },
   representative: { name: 'João Representante', cpf: '529.982.247-25', role: 'Sócio', email: 'joao@x.invalid', phone: '11988887777', hasPowers: true }, ...extra });
-const versionId = async () => (await db.query<{ id: string }>("select id from public.legal_contract_versions where code = '2026.1'")).rows[0].id;
+const versionId = async () => (await db.query<{ id: string }>("select id from public.legal_contract_versions where code = '2026.2'")).rows[0].id;
 
 beforeAll(async () => {
   db = await createDb();
@@ -25,7 +25,12 @@ beforeAll(async () => {
 }, 120000);
 afterAll(async () => { await db?.close(); });
 
-test('contratada vem do cadastro oficial; minuta 2026.1 entra como RASCUNHO e o catálogo mostra preço do servidor', async () => {
+test('contratada vem do cadastro oficial; 2026.1 publicada por decisão do proprietário (mesmo texto da minuta) e preço do servidor', async () => {
+  const v = (await db.query<{ status: string; approval_evidence: string; source_sha256: string }>("select status, approval_evidence, source_sha256 from public.legal_contract_versions where code = '2026.1'")).rows[0];
+  expect(v.status).toBe('published'); expect(v.approval_evidence).toMatch(/Declaração do proprietário/); expect(v.source_sha256).toMatch(/^5932323f5f53/);
+  // os testes de fluxo abaixo partem de um cenário sem versão publicada
+  await db.query("update public.legal_contract_versions set status = 'archived', archived_at = now() where code = '2026.1'");
+  await db.query("insert into public.legal_contract_versions (code, title, body, source_file, source_sha256) select '2026.2', title, body, source_file, source_sha256 from public.legal_contract_versions where code = '2026.1'");
   const cat = await rpc<{ provider: Record<string, string>; version: unknown; draft: { status: string }; plans: { id: string; monthly: number }[] }>(null, 'contract_catalog', []);
   expect(cat.provider).toMatchObject({ legalName: '59.760.458 MARCO ANTONIO BOGGIAN', document: '59.760.458/0001-91', legalNature: 'Empresário Individual', brand: 'PISTEC' });
   expect(cat.provider.address).toBe('Rua Jacques Pilon, 189, Vila Piauí, São Paulo/SP, CEP 05109-160');

@@ -2,7 +2,7 @@
 
 1. **Produção:** `20261030000100_contracts.sql` aplicada e funções publicadas em 28/10/2026. `20261101000100_contract_checkout.sql` (contratação a partir de /planos) **ainda não aplicada** — aguarda autorização.
 2. **Autentique sem credenciais**: integração testada só com mock; nenhum envio real ou sandbox.
-3. **Minuta sem aprovação jurídica** e sem signatário da contratada → contratação real bloqueada (comportamento correto).
+3. **Versão 2026.1 publicada** (02/11/2026, por declaração do proprietário). Contratação real ainda depende de: **signatário da contratada** (nome e e-mail em Super Admin → Contratos digitais → Identidade jurídica) e **credenciais do Autentique**.
 4. **Aditivo**: modelo de dados pronto (`kind='addendum'`, `parent_id`); a UI ainda não gera aditivo — mudança de plano gera novo contrato.
 5. **Certificado**: o Autentique embute o certificado no PDF assinado; `certificate_path` aponta para o mesmo arquivo. Não há certificado separado.
 6. **Comparação de versões** no Super Admin é por parágrafo (adicionado/removido), não por palavra.

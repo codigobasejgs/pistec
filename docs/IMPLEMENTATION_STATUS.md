@@ -10,7 +10,7 @@
 | Descarte de contrato preparado ao trocar plano/corrigir dados | Implementado e testado (SQL) |
 | Licença perpétua com contrato próprio | Não implementado — pendente de minuta jurídica |
 | Assistente /app/contratar (7 etapas, resumo, CEP, validações, leitura obrigatória) | Implementado; testado com mock (SQL) |
-| Minuta 2026.1 estruturada e parametrizada | Implementado e testado; **pendente de aprovação jurídica** |
+| Minuta 2026.1 estruturada e parametrizada | Implementado e testado; **publicada em 02/11/2026** (aprovação declarada pelo proprietário) |
 | Identidade jurídica da contratada (histórico) | Implementado e testado |
 | Snapshot comercial congelado, hash SHA-256, PDF no servidor | Implementado e testado |
 | Assinatura eletrônica Autentique (envio, webhook HMAC, reconciliação, reenvio, cancelamento) | Implementado; testado com mock; **pendente de credenciais** |
