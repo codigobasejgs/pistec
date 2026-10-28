@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react';
+import BrazilianAddressFields from '../../features/address/BrazilianAddressFields';
+import { addressErrors, hasAddress, toAddress, type Address } from '../../services/address';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Building2, CalendarPlus, Pause, Play, Repeat, XCircle } from 'lucide-react';
 import { Button, Field, Modal, Panel } from '../../ui';
@@ -8,7 +10,7 @@ import { useAdmin } from './context';
 import { ConfirmAction, KeyValue, Loaded, StatusBadge, Tabs, Timeline } from './ui';
 
 type Detail = {
-  tenant: { id: string; name: string; legal_name: string; document: string; owner_name: string; email: string; phone: string; whatsapp: string; address: string; website: string; profile: string;
+  tenant: { id: string; name: string; legal_name: string; document: string; owner_name: string; email: string; phone: string; whatsapp: string; address: string; address_data?: unknown; website: string; profile: string;
     plan_id: string; status: string; due_date: string; created_at: string; notes: string; logo: string | null; slug: string };
   subscription: { plan_id: string; period: string; status: string; current_period_end: string; provider: string; cancel_at_period_end: boolean; updated_at: string } | null;
   plan: { name: string; monthly: number; quarterly: number; annual: number; users: number; branches: number; products: number; whatsapp: number; ai_messages: number; features: string[]; modules: string[] } | null;
@@ -100,14 +102,18 @@ export default function TenantDetail() {
 
 function EditTenant({ tenant, onClose, onSaved }: { tenant: Detail['tenant']; onClose: () => void; onSaved: () => void }) {
   const [error, setError] = useState(''), [pending, setPending] = useState(false);
+  const [address, setAddress] = useState<Address>(() => toAddress(tenant.address_data)), [addrErrors, setAddrErrors] = useState<Partial<Record<keyof Address, string>>>({});
   const submit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); const p = Object.fromEntries(new FormData(e.currentTarget)); setPending(true); setError('');
-    try { await call('admin_save_tenant', { p: { ...p, id: tenant.id } }); onSaved(); onClose(); } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); } finally { setPending(false); }
+    e.preventDefault(); const filled = hasAddress(address), errs = filled ? addressErrors(address) : {}; setAddrErrors(errs); if (Object.keys(errs).length) { setError('Complete o endereço ou deixe-o em branco.'); return; }
+    const p = Object.fromEntries(new FormData(e.currentTarget)); setPending(true); setError('');
+    try { await call('admin_save_tenant', { p: { ...p, id: tenant.id, ...(filled ? { addressData: address } : {}) } }); onSaved(); onClose(); } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); } finally { setPending(false); }
   };
   const fields: [string, string, string][] = [['name', 'Nome fantasia', tenant.name], ['legalName', 'Razão social', tenant.legal_name], ['document', 'CNPJ', tenant.document], ['owner', 'Responsável', tenant.owner_name], ['email', 'E-mail', tenant.email],
-    ['phone', 'Telefone', tenant.phone], ['whatsapp', 'WhatsApp', tenant.whatsapp], ['address', 'Endereço', tenant.address], ['website', 'Site', tenant.website], ['profile', 'Segmento', tenant.profile]];
+    ['phone', 'Telefone', tenant.phone], ['whatsapp', 'WhatsApp', tenant.whatsapp], ['website', 'Site', tenant.website], ['profile', 'Segmento', tenant.profile]];
   return <Modal title="Editar dados cadastrais" open onClose={onClose} size="lg"><form className="stack" onSubmit={submit}><p className="muted">Plano, situação e vencimento mudam pelas ações próprias (com justificativa).</p>
     <div className="form-grid">{fields.map(([k, l, v]) => <Field key={k} label={l}><input name={k} defaultValue={v} required={k === 'name' || k === 'email'} type={k === 'email' ? 'email' : 'text'} maxLength={300}/></Field>)}</div>
+    {tenant.address && !hasAddress(address) && <p className="muted small">Endereço atual (texto livre): {tenant.address}</p>}
+    <BrazilianAddressFields legend="Endereço da empresa" required={false} value={address} errors={addrErrors} disabled={pending} onChange={a => { setAddress(a); setAddrErrors({}); }}/>
     {error && <p role="alert" className="field-error">{error}</p>}<div className="toolbar"><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="primary" loading={pending}>Salvar</Button></div></form></Modal>;
 }
 

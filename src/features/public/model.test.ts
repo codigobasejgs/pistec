@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
-  couponValueLabel, documentDigits, email, maskCEP, maskDocument, maskPhone, mockCEP,
+  couponValueLabel, documentDigits, email, maskDocument, maskPhone,
   percentToBps, phoneDigits, planPrice, planSavings, platformRecord, quoteView,
 } from './model';
 import type { Plan } from '../../types';
@@ -19,8 +19,6 @@ describe('model público e SaaS', () => {
   test('validações de contato e CEP', () => {
     expect(email(' A@B.co ')).toBe('a@b.co');
     expect(() => email('x@')).toThrow();
-    expect(mockCEP('01310-100').city).toBe('São Paulo');
-    expect(() => mockCEP('123')).toThrow();
   });
 
   test('registros operacionais da plataforma', () => {
@@ -35,7 +33,6 @@ describe('model público e SaaS', () => {
     expect(documentDigits('12.345.678/0001-99')).toBe('12345678000199');
     expect(() => documentDigits('12345')).toThrow();
 
-    expect(maskCEP('01001000')).toBe('01001-000');
     expect(maskPhone('11987654321')).toBe('(11) 98765-4321');
     expect(maskPhone('1133334444')).toBe('(11) 3333-4444');
     expect(phoneDigits('(11) 98765-4321')).toBe('11987654321');

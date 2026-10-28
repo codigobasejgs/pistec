@@ -5,7 +5,11 @@ test('onboarding cria empresa em teste e ela aparece na demonstração', async (
   const next = () => page.getByRole('button', { name: /Continuar/ }).click();
   await page.getByLabel('Seu nome').fill('Teste E2E'); await page.getByLabel('E-mail').fill('e2e@exemplo.example'); await next();
   await page.getByLabel('Nome fantasia').fill('Oficina E2E'); await page.getByLabel('Razão social').fill('Oficina E2E Ltda'); await page.getByLabel('CPF / CNPJ fictício').fill('12345678000199'); await next();
-  await page.getByLabel('CEP').fill('01001000'); await page.getByRole('button', { name: 'Consultar CEP (simulado)' }).click();
+  // CEP determinístico no teste (resposta real do ViaCEP gravada); a consulta real é verificada em address.e2e.ts.
+  await page.route('https://viacep.com.br/ws/01001000/json/', r => r.fulfill({ json: { cep: '01001-000', logradouro: 'Praça da Sé', complemento: 'lado ímpar', bairro: 'Sé', localidade: 'São Paulo', uf: 'SP', ibge: '3550308' } }));
+  await page.getByLabel('CEP').fill('01001000');
+  await expect(page.getByText('Endereço localizado! Confira os dados e informe o número.')).toBeVisible();
+  await expect(page.getByLabel('Número')).toBeFocused();
   await page.getByLabel('Número').fill('100'); await next();
   await next(); await next();
   await expect(page.getByText('R$ 669,00')).toBeVisible(); // trimestral Profissional

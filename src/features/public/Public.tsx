@@ -7,10 +7,12 @@ import { date, imageData, money, today, uid } from '../../lib';
 import { Empty, Field } from '../../ui';
 import type { Branding, Role, Tenant } from '../../types';
 import {
-  documentDigits, email, maskCEP, maskDocument, maskPhone, mockCEP, periods, phoneDigits,
+  documentDigits, email, maskDocument, maskPhone, periods, phoneDigits,
   planPrice, planSavings, platformRecord, required, roles, type Period,
 } from './model';
 import { useAction } from './useAction';
+import BrazilianAddressFields from '../address/BrazilianAddressFields';
+import { addressErrors, emptyAddress, formatAddress, type Address } from '../../services/address';
 import './public.css';
 
 const modules = [
@@ -196,11 +198,11 @@ function Onboarding() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [data, setData] = useState({
     owner: '', email: '', name: '', legalName: '', document: '', profile: 'Oficina',
-    cep: '', street: '', number: '', district: '', city: '', region: '',
     planId: params.get('plano') || '',
     period: (Object.keys(periods).includes(params.get('periodo') || '') ? params.get('periodo') : 'monthly') as Period,
     primary: '#16c7e8', secondary: '#102440', accent: '#38d4ec', logo: '',
   });
+  const [address, setAddress] = useState<Address>(emptyAddress);
   const plan = state.plans.find(item => item.id === data.planId) || state.plans[0];
   const clearError = (field: string) => setErrors(cur => { if (!cur[field]) return cur; const next = { ...cur }; delete next[field]; return next; });
   const change = (key: keyof typeof data, value: string) => { clearError(key); setData(current => ({ ...current, [key]: value })); };
@@ -217,12 +219,7 @@ function Onboarding() {
       try { documentDigits(data.document); } catch (e) { errs.document = (e as Error).message; }
     }
     if (stage === 2) {
-      try { mockCEP(data.cep); } catch (e) { errs.cep = (e as Error).message; }
-      try { required(data.street, 'Logradouro'); } catch (e) { errs.street = (e as Error).message; }
-      try { required(data.number, 'Número'); } catch (e) { errs.number = (e as Error).message; }
-      try { required(data.district, 'Bairro'); } catch (e) { errs.district = (e as Error).message; }
-      try { required(data.city, 'Cidade'); } catch (e) { errs.city = (e as Error).message; }
-      if (!/^[A-Z]{2}$/.test(data.region)) errs.region = 'UF deve ter duas letras.';
+      Object.assign(errs, addressErrors(address));
     }
     if (stage === 3 && !plan) errs.planId = 'Selecione um plano válido.';
     if (stage === 4 && ![data.primary, data.secondary, data.accent].every(c => /^#[\da-f]{6}$/i.test(c))) errs.colors = 'Cores hexadecimais inválidas.';
@@ -251,7 +248,7 @@ function Onboarding() {
         created = createTenant(draft, { owner: required(data.owner, 'Nome'), email: email(data.email), name: required(data.name, 'Empresa'), legalName: required(data.legalName, 'Razão social'), document: data.document.replace(/\D/g, ''), profile: data.profile, planId: plan.id, branding, notes: 'Cadastro demonstrativo; endereço e aceite no registro admin-onboarding.' });
         branchId = draft.branches.find(item => item.tenantId === created?.id && item.active)?.id || '';
         if (!branchId) throw new Error('Não foi possível criar a filial inicial.');
-        draft.records.push(platformRecord(uid(), 'admin-onboarding', `Cadastro: ${created.name}`, { tenantId: created.id, cep: data.cep, street: data.street, number: data.number, district: data.district, city: data.city, region: data.region, period: data.period, consent: new Date().toISOString(), termsVersion: 'demo-1', total: String(planPrice(plan, data.period).total) }));
+        draft.records.push(platformRecord(uid(), 'admin-onboarding', `Cadastro: ${created.name}`, { tenantId: created.id, cep: address.zip.replace(/\D/g, ''), street: address.street, number: address.number, complement: address.complement, district: address.district, city: address.city, region: address.state, period: data.period, consent: new Date().toISOString(), termsVersion: 'demo-1', total: String(planPrice(plan, data.period).total) }));
       });
       if (created) { setSession({ tenantId: created.id, branchId, role: 'Proprietário', name: created.owner, admin: false }); navigate(`/loja/${created.slug}/dashboard`); }
     }, 'Empresa demonstrativa criada.');
@@ -277,23 +274,9 @@ function Onboarding() {
         <Field label="Perfil da empresa"><select value={data.profile} onChange={event => change('profile', event.target.value)}>{['Oficina', 'Motopeças', 'Autopeças', 'Oficina e peças'].map(item => <option key={item}>{item}</option>)}</select></Field>
       </>}
       {step === 2 && <>
-        <Field label="CEP" hint="Formato 00000-000" error={errors.cep}><input required inputMode="numeric" maxLength={9} value={maskCEP(data.cep)} onChange={event => change('cep', event.target.value)}/></Field>
-        <button className="pub-button pub-button-outline" type="button" disabled={action.pending} onClick={() => {
-          try {
-            const cepData = mockCEP(data.cep);
-            clearError('cep');
-            setData(cur => ({ ...cur, ...cepData }));
-          } catch (e) {
-            setErrors(cur => ({ ...cur, cep: (e as Error).message }));
-          }
-        }}>Consultar CEP (simulado)</button>
-        <div className="form-grid">
-          <Field label="Logradouro" error={errors.street}><input required value={data.street} maxLength={160} onChange={event => change('street', event.target.value)}/></Field>
-          <Field label="Número" error={errors.number}><input required value={data.number} maxLength={20} onChange={event => change('number', event.target.value)}/></Field>
-          <Field label="Bairro" error={errors.district}><input required value={data.district} maxLength={160} onChange={event => change('district', event.target.value)}/></Field>
-          <Field label="Cidade" error={errors.city}><input required value={data.city} maxLength={160} onChange={event => change('city', event.target.value)}/></Field>
-          <Field label="UF" hint="2 letras" error={errors.region}><input required value={data.region} maxLength={2} onChange={event => change('region', event.target.value.toUpperCase())}/></Field>
-        </div>
+        <p className="pub-callout">A consulta de CEP é real (ViaCEP, com BrasilAPI de reserva). A empresa criada aqui continua sendo uma demonstração salva só neste navegador.</p>
+        <BrazilianAddressFields legend="Endereço da empresa" value={address} errors={errors} disabled={action.pending}
+          onChange={next => { setAddress(next); setErrors(cur => { const n = { ...cur }; for (const k of ['zip', 'street', 'number', 'district', 'city', 'state']) delete n[k]; return n; }); }}/>
       </>}
       {step === 3 && <>
         <Field label="Plano" error={errors.planId}><select required value={plan?.id || ''} onChange={event => change('planId', event.target.value)}>{!plan && <option value="">Sem planos disponíveis</option>}{state.plans.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
@@ -310,7 +293,7 @@ function Onboarding() {
         <dl className="pub-summary">
           <dt>Responsável</dt><dd>{data.owner} · {data.email}</dd>
           <dt>Empresa</dt><dd>{data.name} ({data.legalName}) · {maskDocument(data.document)} · {data.profile}</dd>
-          <dt>Endereço</dt><dd>{data.street}, {data.number} — {data.district}, {data.city}/{data.region} · CEP {maskCEP(data.cep)}</dd>
+          <dt>Endereço</dt><dd>{formatAddress(address)}</dd>
           <dt>Plano</dt><dd>{plan?.name} · {periods[data.period].label} · {plan ? money(planPrice(plan, data.period).total) : 'Indisponível'}</dd>
         </dl>
         <label className="pub-check"><input type="checkbox" required checked={accepted} onChange={event => { setAccepted(event.target.checked); clearError('accepted'); }}/><span>Li os <Link to="/termos" target="_blank" rel="noopener noreferrer">termos</Link> e a <Link to="/privacidade" target="_blank" rel="noopener noreferrer">política de privacidade</Link>. Entendo que esta é uma demonstração local.</span></label>

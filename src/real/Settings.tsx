@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import BrazilianAddressFields from '../features/address/BrazilianAddressFields';
+import { addressErrors, emptyAddress, toAddress, type Address } from '../services/address';
 import { Link, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { rpc, useDemo } from '../store';
@@ -105,6 +107,18 @@ function IntegrationStatus() {
   return <Panel title="Integrações"><p role="status">Integração pendente de verificação.</p><p>Esta tela não confirma configuração, conectividade nem envio de mensagens. O checkout depende do serviço de cobrança; pagamento só é confirmado pelo servidor.</p></Panel>;
 }
 
+/** Endereço confirmado da empresa (Supabase: tenants.address_data + texto usado em documentos e novos contratos). */
+function CompanyAddress({ tenant, allowed }: { tenant: Tenant; allowed: boolean }) {
+  const { perform } = useDemo(), task = useTask();
+  const [address, setAddress] = useState<Address | null>(null), [errors, setErrors] = useState<Partial<Record<keyof Address, string>>>({});
+  useEffect(() => { void supabase.from('tenants').select('address_data').eq('id', tenant.id).maybeSingle().then(({ data }) => setAddress(data ? toAddress(data.address_data) : emptyAddress)); }, [tenant.id]);
+  return <Panel title="Endereço da empresa">{!address ? <p role="status">Carregando endereço…</p> : <form className="stack" onSubmit={e => {
+    e.preventDefault(); const errs = addressErrors(address); setErrors(errs); if (Object.keys(errs).length) return;
+    void task.run(async () => { await perform(noDemo, rpc('update_tenant_address', { p_tenant: tenant.id, p: address })); }, 'Endereço salvo. Contratos já assinados mantêm o endereço da data da assinatura.');
+  }}><BrazilianAddressFields value={address} errors={errors} disabled={!allowed || task.pending} onChange={a => { setAddress(a); setErrors({}); }}/>
+    {allowed && <Button type="submit" variant="primary" loading={task.pending}>Salvar endereço</Button>}{task.feedback}</form>}</Panel>;
+}
+
 function Company({ tenant }: { tenant: Tenant }) {
   const { perform, session } = useDemo(), task = useTask();
   const [company, setCompany] = useState({ name: tenant.name, legalName: tenant.legalName, document: tenant.document, email: tenant.email, notes: tenant.notes });
@@ -118,7 +132,7 @@ function Company({ tenant }: { tenant: Tenant }) {
     }, 'Dados da empresa atualizados.');
   }}><fieldset disabled={!allowed || task.pending}><legend>Identificação da empresa</legend><div className="form-grid">
     {([['name', 'Nome fantasia', 120], ['legalName', 'Razão social', 160], ['document', 'CNPJ', 30], ['email', 'E-mail da empresa', 254]] as const).map(([key, label, max]) => <Field key={key} label={label}><input type={key === 'email' ? 'email' : 'text'} required={key === 'name' || key === 'email'} maxLength={max} value={company[key]} onChange={e => setCompany(c => ({ ...c, [key]: e.target.value }))}/></Field>)}
-  </div><Field label="Observações operacionais"><textarea maxLength={2000} value={company.notes} onChange={e => setCompany(c => ({ ...c, notes: e.target.value }))}/></Field><Button type="submit" variant="primary" loading={task.pending}>Salvar configurações</Button></fieldset>{!allowed && <p>Somente proprietário ou administrador pode editar.</p>}{task.feedback}</form></Panel><IntegrationStatus/></>;
+  </div><Field label="Observações operacionais"><textarea maxLength={2000} value={company.notes} onChange={e => setCompany(c => ({ ...c, notes: e.target.value }))}/></Field><Button type="submit" variant="primary" loading={task.pending}>Salvar configurações</Button></fieldset>{!allowed && <p>Somente proprietário ou administrador pode editar.</p>}{task.feedback}</form></Panel><CompanyAddress tenant={tenant} allowed={allowed}/><IntegrationStatus/></>;
 }
 
 function Subscription({ tenant }: { tenant: Tenant }) {

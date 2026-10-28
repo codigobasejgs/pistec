@@ -33,9 +33,16 @@ test('ambiente real: login, onboarding, produto, estoque, caixa, venda e finance
     await page.getByLabel('Razão social').fill(`${companyName} LTDA`);
     await page.getByLabel('Responsável').fill('Operador E2E');
     await page.getByLabel('CNPJ').fill('12345678000199');
+    // Endereço pelo CEP real (ViaCEP via proxy) e persistência no Supabase.
+    await page.getByLabel('CEP').fill('01001-000');
+    await expect(page.getByLabel('Logradouro')).toHaveValue('Praça da Sé', { timeout: 15000 });
+    await page.getByLabel('Número').fill('100');
     await page.getByLabel('Plano').selectOption('premium');
     await page.getByRole('button', { name: 'Criar empresa' }).click();
     await page.getByRole('link', { name: companyName }).click();
+    const [saved] = await admin(`/rest/v1/tenants?select=address,address_data&name=eq.${encodeURIComponent(companyName)}`, 'GET') as { address: string; address_data: Record<string, string> }[];
+    expect(saved.address).toBe('Praça da Sé, 100, Sé, São Paulo/SP, CEP 01001-000');
+    expect(saved.address_data).toMatchObject({ zip: '01001000', number: '100', city: 'São Paulo', state: 'SP' });
     await expect(page.getByText('AMBIENTE REAL', { exact: true })).toBeVisible();
 
     await page.getByRole('link', { name: 'Produtos', exact: true }).click();

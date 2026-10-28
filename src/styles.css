@@ -658,3 +658,36 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); 
   .hire-summary:not(.open) .hire-summary-body { display: none; }
 }
 @media (max-width: 480px) { .hire-contract-summary { grid-template-columns: minmax(0, 1fr); } .hire-contract-summary dt { border-bottom: 0; padding-bottom: 0; } .hire-nav .btn { flex: 1; } }
+
+/* Endereço com consulta de CEP (BrazilianAddressFields) */
+.address-fields { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); }
+.address-fields legend { padding: 0 6px; font-weight: 700; font-size: .9rem; }
+.address-cep { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.address-cep .field { flex: 0 1 220px; min-width: 0; }
+.address-cep .field input { font-size: 1.05rem; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.address-lookup { min-height: 42px; }
+.address-status { display: flex; align-items: center; gap: 6px; min-height: 1.3em; margin: 0; font-size: .84rem; color: var(--muted); }
+.address-status:empty { display: none; }
+.address-status.ok { color: var(--success); } .address-status.warn { color: var(--accent); } .address-status.error { color: #fb7185; }
+[data-theme="light"] .address-status.ok { color: #047857; } [data-theme="light"] .address-status.warn { color: #92400e; } [data-theme="light"] .address-status.error { color: #be123c; }
+.address-offer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-left: 3px solid var(--secondary); border-radius: var(--radius-sm); background: var(--elevated); font-size: .85rem; }
+.address-offer span { flex: 1 1 220px; }
+.address-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.address-grid > :nth-child(1) { grid-column: span 4; } .address-grid > :nth-child(2) { grid-column: span 2; }
+.address-grid > :nth-child(3), .address-grid > :nth-child(4) { grid-column: span 3; }
+.address-grid > :nth-child(5) { grid-column: span 4; } .address-grid > :nth-child(6) { grid-column: span 2; }
+.form-span { grid-column: 1 / -1; min-width: 0; }
+@media (max-width: 560px) {
+  .address-fields { padding: 12px 10px; }
+  .address-grid { grid-template-columns: minmax(0, 1fr); } .address-grid > * { grid-column: auto !important; }
+  .address-cep .field { flex: 1 1 100%; } .address-lookup { width: 100%; justify-content: center; }
+}
+/* Mesmo componente na landing (tema público) */
+.pub-form .address-fields { border-color: var(--pub-line); border-radius: 12px; }
+.pub-form .address-fields .field { display: flex; flex-direction: column; gap: 6px; color: var(--pub-muted); font-size: .88rem; font-weight: 600; }
+.pub-form .address-fields .field-error { color: var(--pub-danger); font-style: normal; font-weight: 500; }
+.pub-form .address-fields .field-hint { color: var(--pub-muted); font-weight: 400; font-size: .78rem; }
+.pub-form .address-fields .form-grid { display: grid; gap: 12px; }
+.pub-form .address-lookup, .pub-form .address-offer .btn { padding: .65rem 1rem; border-radius: 10px; border: 1px solid var(--pub-line); background: var(--pub-raised); color: var(--pub-text); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.pub-form .address-offer { background: var(--pub-raised); border-left-color: var(--pub-cyan); color: var(--pub-text); }
+.pub-form .address-status.ok { color: #4ade80; } .pub-form .address-status.warn { color: #fbbf24; } .pub-form .address-status.error { color: var(--pub-danger); }

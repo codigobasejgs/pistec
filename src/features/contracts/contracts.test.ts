@@ -4,7 +4,8 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import minuta from '../../../supabase/functions/_shared/contracts/minuta-2026-1.json';
 import { fill, fillContract, variables, type ContractData } from '../../../supabase/functions/_shared/contracts/template';
 import { renderContractPdf, sha256Hex } from '../../../supabase/functions/_shared/contracts/pdf';
-import { cnpjValid, cpfValid, maskCep, maskDoc, maskPhone } from './br';
+import { cnpjValid, cpfValid, maskDoc, maskPhone } from './br';
+import { maskCep } from '../../services/address';
 
 const data = (over: Partial<ContractData> = {}): ContractData => ({
   id: '0f8fad5b-d9cb-469f-a165-70867728950e', number: 'PST-2026-00001', status: 'prepared', sandbox: false,

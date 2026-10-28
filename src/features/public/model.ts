@@ -26,11 +26,6 @@ export function email(value: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) throw new Error('Informe um e-mail válido.');
   return text;
 }
-export function mockCEP(value: string) {
-  if (!/^\d{8}$/.test(value.replace(/\D/g, ''))) throw new Error('Informe um CEP com 8 dígitos.');
-  // ponytail: consulta demonstrativa fixa; substituir por serviço de CEP no backend.
-  return { street: 'Rua de Demonstração', district: 'Centro', city: 'São Paulo', region: 'SP' };
-}
 export function platformRecord(id: string, kind: string, title: string, fields: Record<string, string> = {}, amount = 0): OperationalRecord {
   if (!kind.startsWith('admin-')) throw new Error('Registros da plataforma devem usar o prefixo admin-.');
   if (!Number.isSafeInteger(amount) || amount < 0) throw new Error('Valor inválido.');
@@ -46,7 +41,6 @@ function pattern(digits: string, mask: string) {
 }
 const onlyDigits = (value: string, max: number) => value.replace(/\D/g, '').slice(0, max);
 export const maskDocument = (value: string) => { const d = onlyDigits(value, 14); return d.length <= 11 ? pattern(d, '000.000.000-00') : pattern(d, '00.000.000/0000-00'); };
-export const maskCEP = (value: string) => pattern(onlyDigits(value, 8), '00000-000');
 export const maskPhone = (value: string) => { const d = onlyDigits(value, 11); return d.length <= 10 ? pattern(d, '(00) 0000-0000') : pattern(d, '(00) 00000-0000'); };
 export function documentDigits(value: string) {
   const d = value.replace(/\D/g, '');

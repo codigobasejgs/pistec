@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { toAddress } from '../services/address';
 import type { Branding, DemoState, BillingPeriod } from '../types';
 
 // Snapshot de leitura em memória; não reutiliza seed nem IndexedDB.
@@ -53,7 +54,7 @@ export async function loadRealState(client: SupabaseClient, tenantId: string | n
   const data = Object.fromEntries(await Promise.all(tables.map(async table => [table, await rows(client, table, scope, admin && table === 'records')] as const)));
   const get = (table: string) => data[table] ?? [];
   state.products = get('products').map(r => ({ id: str(r.id), tenantId: str(r.tenant_id), name: str(r.name), sku: str(r.sku), barcode: str(r.barcode), category: str(r.category), brand: str(r.brand), cost: integer(r.cost), price: integer(r.price), min: integer(r.min), max: integer(r.max), location: str(r.location), active: r.active === true, details: object(r.details) }));
-  state.customers = get('customers').map(r => ({ id: str(r.id), tenantId: str(r.tenant_id), name: str(r.name), document: str(r.document), email: str(r.email), phone: str(r.phone), address: str(r.address), consent: r.consent === true, notes: str(r.notes) }));
+  state.customers = get('customers').map(r => ({ id: str(r.id), tenantId: str(r.tenant_id), name: str(r.name), document: str(r.document), email: str(r.email), phone: str(r.phone), address: str(r.address), addressData: toAddress(r.address_data), consent: r.consent === true, notes: str(r.notes) }));
   state.balances = get('stock_balances').map(r => ({ tenantId: str(r.tenant_id), branchId: str(r.branch_id), productId: str(r.product_id), quantity: integer(r.quantity), reserved: integer(r.reserved) }));
   state.movements = get('stock_movements').map(r => ({ id: str(r.id), tenantId: str(r.tenant_id), branchId: str(r.branch_id), productId: str(r.product_id), quantity: integer(r.quantity), type: str(r.type), reference: str(r.reference), date: str(r.created_at) }));
   const items = group(get('sale_items'), 'sale_id'), payments = group(get('sale_payments'), 'sale_id');

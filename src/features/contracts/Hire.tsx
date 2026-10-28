@@ -5,11 +5,13 @@ import { supabase } from '../../real/client';
 import { uid } from '../../lib';
 import { fillContract, brl, type ContractData } from '../../../supabase/functions/_shared/contracts/template';
 import AdminTour from '../../real/admin/AdminTour';
-import { cnpjValid, cpfValid, digits, maskCep, maskDoc, maskPhone } from './br';
+import { cnpjValid, cpfValid, digits, maskDoc, maskPhone } from './br';
+import BrazilianAddressFields from '../address/BrazilianAddressFields';
+import { addressErrors, hasAddress, toAddress, type Address } from '../../services/address';
 
 type Plan = { id: string; name: string; monthly: number; quarterly: number; annual: number; trialDays: number; users: number; branches: number; products: number; whatsapp: number; aiMessages: number; features: string[]; modules: string[] };
 type Catalog = { plans: Plan[]; provider: Record<string, string>; version: { code: string } | null; draft: { code: string; status: string } | null };
-type Tenant = { id: string; slug: string; name: string; legal_name: string; document: string; email: string; phone: string; address: string; status: string; due_date: string };
+type Tenant = { id: string; slug: string; name: string; legal_name: string; document: string; email: string; phone: string; address: string; address_data: unknown; status: string; due_date: string };
 type Detail = ContractData & { signers: { role: string; name: string; email: string; status: string; signedAt: string | null }[]; events: { type: string; at: string }[]; invoiceId: string | null; invoice: { status: string } | null; tenantId: string; expiresAt: string };
 const PERIODS = { monthly: 'Mensal', quarterly: 'Trimestral', annual: 'Anual' } as const;
 type Period = keyof typeof PERIODS;
@@ -17,6 +19,8 @@ const STEPS = ['Plano', 'Empresa', 'Representante', 'Contrato', 'Assinatura', 'P
 const STATUS: Record<string, string> = { prepared: 'Pronto para assinatura', awaiting_customer: 'Aguardando sua assinatura', awaiting_provider: 'Aguardando assinatura da contratada', partially_signed: 'Parcialmente assinado',
   signed: 'Assinado por todos', refused: 'Recusado', expired: 'Expirado', cancelled: 'Cancelado', error: 'Erro de integração', draft: 'Rascunho', awaiting_data: 'Aguardando dados' };
 const DRAFT_KEY = 'pistec-hire-draft';
+const ADDRESS_KEYS: (keyof Address)[] = ['zip', 'street', 'number', 'complement', 'district', 'city', 'state'];
+const pickAddress = (c: Record<string, unknown>): Address => Object.fromEntries(ADDRESS_KEYS.map(k => [k, String(c[k] ?? '')])) as Address;
 // Tour da contratação: cada etapa só existe na tela quando o assistente chega nela.
 const HIRE_TOUR = { contratacao: { label: 'Contratação', steps: [
   { target: 'hire-plans', title: 'Escolhendo o plano', text: 'Selecione o plano e a periodicidade (mensal, trimestral ou anual). Preços vêm do catálogo vigente; cupom é validado no servidor.' },
@@ -49,34 +53,27 @@ export default function Hire() {
       supabase.from('platform_admins').select('user_id').eq('user_id', user.id)]);
     setIsAdmin(!!adm?.length);
     const ids = (ms ?? []).map(m => m.tenant_id);
-    if (ids.length) { const { data } = await supabase.from('tenants').select('id,slug,name,legal_name,document,email,phone,address,status,due_date').in('id', ids); setTenants((data ?? []) as Tenant[]);
+    if (ids.length) { const { data } = await supabase.from('tenants').select('id,slug,name,legal_name,document,email,phone,address,address_data,status,due_date').in('id', ids); setTenants((data ?? []) as Tenant[]);
       const pick = (data ?? []).find(t => t.slug === params.get('empresa')) ?? data?.[0]; if (pick) setTenantId(pick.id); }
     setForm(f => ({ ...f, planId: f.planId || plano || '', representative: { ...f.representative, email: f.representative.email || user.email || '' } }));
   })(); }, [plano, params]);
   // autopreenchimento com o cadastro da empresa (sem sobrescrever o que já foi digitado)
   useEffect(() => { if (!tenant) return; setForm(f => ({ ...f, company: { ...f.company, legalName: f.company.legalName || tenant.legal_name || tenant.name, tradeName: f.company.tradeName || tenant.name,
-    document: f.company.document || maskDoc(tenant.document), email: f.company.email || tenant.email, phone: f.company.phone || maskPhone(tenant.phone) } })); }, [tenant]);
+    document: f.company.document || maskDoc(tenant.document), email: f.company.email || tenant.email, phone: f.company.phone || maskPhone(tenant.phone),
+    ...(hasAddress(pickAddress(f.company)) ? {} : toAddress(tenant.address_data)) } })); }, [tenant]);
   const plan = catalog?.plans.find(p => p.id === form.planId);
   const price = plan ? plan[form.period] : 0;
   const trialLeft = tenant?.status === 'Teste' ? Math.max(0, Math.ceil((new Date(`${tenant.due_date}T12:00:00`).getTime() - Date.now()) / 864e5)) : 0;
   const set = (path: 'company' | 'representative', key: string, value: string | boolean) => { setForm(f => ({ ...f, [path]: { ...f[path], [key]: value } })); setErrors(e => { const n = { ...e }; delete n[`${path}.${key}`]; return n; }); };
 
-  const lookupCep = useCallback(async () => {
-    const cep = digits(form.company.zip); if (cep.length !== 8) return;
-    try { const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: AbortSignal.timeout(6000) }); const d = await r.json(); if (d.erro) { setErrors(e => ({ ...e, 'company.zip': 'CEP não encontrado. Preencha o endereço manualmente.' })); return; }
-      setForm(f => ({ ...f, company: { ...f.company, street: f.company.street || d.logradouro || '', district: f.company.district || d.bairro || '', city: d.localidade || f.company.city, state: d.uf || f.company.state } }));
-    } catch { /* consulta opcional: segue manual */ }
-  }, [form.company.zip]);
-
+  const companyAddressErrors = Object.fromEntries(ADDRESS_KEYS.map(k => [k, errors[`company.${k}`]]).filter(([, v]) => v)) as Partial<Record<keyof Address, string>>;
   function validate(s: number) {
     const e: Record<string, string> = {}, c = form.company, r = form.representative;
     if (s === 0) { if (!plan) e.plan = 'Escolha um plano.'; if (!tenant) e.tenant = 'Selecione a empresa (ou crie uma em Minhas empresas).'; }
     if (s === 1) {
       if (!c.legalName.trim()) e['company.legalName'] = 'Informe a razão social.';
       const d = digits(c.document); if (!(d.length === 14 ? cnpjValid(d) : d.length === 11 && cpfValid(d))) e['company.document'] = 'CPF/CNPJ inválido.';
-      if (digits(c.zip).length !== 8) e['company.zip'] = 'CEP inválido.';
-      for (const k of ['street', 'number', 'district', 'city'] as const) if (!c[k].trim()) e[`company.${k}`] = 'Obrigatório.';
-      if (!/^[A-Z]{2}$/.test(c.state)) e['company.state'] = 'UF com 2 letras.';
+      for (const [k, v] of Object.entries(addressErrors(pickAddress(c)))) e[`company.${k}`] = v;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c.email)) e['company.email'] = 'E-mail inválido.';
       if (digits(c.phone).length < 10) e['company.phone'] = 'Telefone com DDD.';
     }
@@ -100,6 +97,8 @@ export default function Hire() {
         company: { ...form.company, document: digits(form.company.document), zip: digits(form.company.zip), phone: digits(form.company.phone) },
         representative: { ...form.representative, cpf: digits(form.representative.cpf), phone: digits(form.representative.phone) } } });
       if (error) throw error;
+      // Endereço confirmado vira o cadastral da empresa; contratos existentes mantêm os dados congelados.
+      void supabase.rpc('update_tenant_address', { p_tenant: tenantId, p: pickAddress(form.company) });
       await loadContract((data as { id: string }).id); setRead(false); setStep(3);
     } catch (e) { setFail(e instanceof Error ? e.message : 'Não foi possível preparar o contrato.'); } finally { setBusy(''); }
   }
@@ -172,10 +171,9 @@ export default function Hire() {
       {step === 1 && <Step icon={<Building2/>} title="Dados da empresa contratante"><div className="form-grid" data-tour="hire-company">
         {field('company', 'legalName', 'Razão social', { auto: 'organization' })}{field('company', 'tradeName', 'Nome fantasia')}
         {field('company', 'document', 'CNPJ (ou CPF, se pessoa física)', { mask: maskDoc, hint: 'Validamos os dígitos; os dados não são consultados em bases externas.' })}
-        {field('company', 'zip', 'CEP', { mask: maskCep, onBlur: () => void lookupCep(), hint: 'Buscamos o endereço pelo CEP; confira e corrija se necessário.' })}
-        {field('company', 'street', 'Logradouro', { auto: 'address-line1' })}{field('company', 'number', 'Número', { max: 20 })}{field('company', 'complement', 'Complemento', { max: 60 })}
-        {field('company', 'district', 'Bairro')}{field('company', 'city', 'Cidade', { auto: 'address-level2' })}{field('company', 'state', 'UF', { upper: true, max: 2 })}
-        {field('company', 'phone', 'Telefone', { mask: maskPhone, auto: 'tel' })}{field('company', 'email', 'E-mail da empresa', { type: 'email', auto: 'email' })}</div></Step>}
+      </div><BrazilianAddressFields legend="Endereço da empresa" value={pickAddress(form.company)} errors={companyAddressErrors}
+        onChange={a => { setForm(f => ({ ...f, company: { ...f.company, ...a } })); setErrors(e => Object.fromEntries(Object.entries(e).filter(([k]) => !k.startsWith('company.') || !ADDRESS_KEYS.includes(k.slice(8) as keyof Address)))); }}/>
+        <div className="form-grid">{field('company', 'phone', 'Telefone', { mask: maskPhone, auto: 'tel' })}{field('company', 'email', 'E-mail da empresa', { type: 'email', auto: 'email' })}</div></Step>}
       {step === 2 && <Step icon={<UserRound/>} title="Representante que assina"><div className="form-grid" data-tour="hire-representative">
         {field('representative', 'name', 'Nome completo', { auto: 'name' })}{field('representative', 'cpf', 'CPF', { mask: maskDoc, hint: 'Exigido pelo provedor de assinatura para identificar o signatário.' })}
         {field('representative', 'role', 'Cargo ou função', { hint: 'Ex.: sócio-administrador, diretor, titular' })}{field('representative', 'email', 'E-mail (recebe o convite de assinatura)', { type: 'email', auto: 'email' })}

@@ -7,7 +7,7 @@ export interface Branding { primary: string; secondary: string; accent: string; 
 export interface Tenant { id: string; slug: string; name: string; legalName: string; document: string; owner: string; email: string; profile: string; planId: string; status: string; dueDate: string; branding: Branding; notes: string }
 export interface Branch { id: string; tenantId: string; name: string; active: boolean }
 export interface Product { id: string; tenantId: string; name: string; sku: string; barcode: string; category: string; brand: string; cost: number; price: number; min: number; max: number; location: string; active: boolean; details: Record<string, string> }
-export interface Customer { id: string; tenantId: string; name: string; document: string; email: string; phone: string; address: string; consent: boolean; notes: string }
+export interface Customer { id: string; tenantId: string; name: string; document: string; email: string; phone: string; address: string; addressData?: import('./services/address').Address; consent: boolean; notes: string }
 export interface StockBalance { tenantId: string; branchId: string; productId: string; quantity: number; reserved: number }
 export interface StockMovement { id: string; tenantId: string; branchId: string; productId: string; quantity: number; type: string; reference: string; date: string }
 export interface SaleItem { productId: string; name: string; quantity: number; price: number; cost: number }

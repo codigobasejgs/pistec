@@ -7,6 +7,8 @@ import { supabase } from './client';
 import { emptyState, loadRealState } from './read';
 import { signOut } from './auth';
 import AuthPage from './AuthPage';
+import BrazilianAddressFields from '../features/address/BrazilianAddressFields';
+import { addressErrors, emptyAddress, type Address } from '../services/address';
 import Layout from '../app/Layout';
 import Dashboard from '../features/dashboard/Dashboard';
 import Products from '../features/erp/Products';
@@ -33,14 +35,17 @@ const denied = () => { throw new Error('Operação demonstrativa indisponível n
 
 function Onboarding({ refresh }: { refresh: () => void }) {
   const [error, setError] = useState(''), [pending, setPending] = useState(false);
+  const [address, setAddress] = useState<Address>(emptyAddress), [addrErrors, setAddrErrors] = useState<Partial<Record<keyof Address, string>>>({});
   const navigate = useNavigate();
   async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); const p = Object.fromEntries(new FormData(e.currentTarget)); setPending(true); setError('');
+    e.preventDefault(); const errs = addressErrors(address); setAddrErrors(errs); if (Object.keys(errs).length) { setError('Revise o endereço da empresa.'); return; }
+    const p = { ...Object.fromEntries(new FormData(e.currentTarget)), address }; setPending(true); setError('');
     try { const { error } = await supabase.rpc('onboard_tenant', { p }); if (error) throw error; refresh(); navigate('/', { replace: true }); }
     catch (e) { setError(errorText(e)); } finally { setPending(false); }
   }
   return <main className="page" style={{ maxWidth: 600, margin: 'auto' }}><h1>Cadastrar empresa</h1><form className="stack" onSubmit={submit}>
     {([['name', 'Nome fantasia'], ['legalName', 'Razão social'], ['owner', 'Responsável'], ['document', 'CNPJ']] as const).map(([name, label]) => <label className="field" key={name}>{label}<input name={name} required maxLength={120}/></label>)}
+    <BrazilianAddressFields legend="Endereço da empresa" value={address} errors={addrErrors} disabled={pending} onChange={a => { setAddress(a); setAddrErrors({}); }}/>
     <label className="field">Plano<select name="planId"><option value="essencial">Essencial</option><option value="profissional">Profissional</option><option value="premium">Premium</option><option value="enterprise">Enterprise</option></select></label>
     <p>A empresa inicia em teste, conforme as condições do plano. Nenhuma cobrança é confirmada por este cadastro.</p>{error && <p role="alert">{error}</p>}<button className="btn primary" disabled={pending}>Criar empresa</button>
   </form></main>;
