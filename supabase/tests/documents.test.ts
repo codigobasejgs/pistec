@@ -61,6 +61,9 @@ test('isolamento: B não emite, não lê e não imprime documento de A; impresso
   const bDoc = await rpc<Issued>(B.user, 'issue_document', [B.tenant, 'inventory', B.branch]);
   await expect(rpc(B.user, 'record_document_print', [B.tenant, bDoc.id, 'print', 'browser', printer, 'print-key-b002'])).rejects.toThrow(/não pertence/);
   expect(await as(db, B.user, 'select id from public.printer_profiles')).toEqual([]);
+  // regressão: quem não é membro não apaga impressora de outra empresa
+  await expect(rpc(B.user, 'delete_printer_profile', [A.tenant, printer])).rejects.toThrow(/proprietário, administrador ou gerente/);
+  expect((await db.query('select 1 from public.printer_profiles where id = $1', [printer])).rows).toHaveLength(1);
 });
 
 test('link seguro: token aleatório, só hash no banco, sem contato do cliente; revogado, expirado e forjado não abrem', async () => {

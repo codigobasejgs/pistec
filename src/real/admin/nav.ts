@@ -1,4 +1,4 @@
-import { Activity, AppWindow, BarChart3, Bell, BellRing, Bot, Building2, CircleAlert, CircleHelp, ClipboardList, CreditCard, FileText, GraduationCap, Headphones, KeyRound,
+import { Activity, AppWindow, BarChart3, Bell, BellRing, Bot, Building2, CircleAlert, CircleHelp, ClipboardList, CreditCard, FileSignature, FileText, GraduationCap, Headphones, KeyRound,
   LayoutDashboard, ListChecks, Mail, Megaphone, MessageCircle, Plug, Receipt, ScrollText, Settings, ShieldCheck, Tags, Ticket, UserPlus, Users, Wallet, Webhook, Workflow, type LucideIcon } from 'lucide-react';
 
 export type AdminNavItem = { path: string; label: string; icon: LucideIcon; group: string; perm?: string };
@@ -17,6 +17,7 @@ export const adminNav: AdminNavItem[] = [
   { path: 'planos', label: 'Planos SaaS', icon: Tags, group: 'Assinaturas e comercial' },
   { path: 'assinaturas', label: 'Assinaturas', icon: FileText, group: 'Assinaturas e comercial' },
   { path: 'faturas', label: 'Faturas e cobranças', icon: Receipt, group: 'Assinaturas e comercial', perm: 'billing.read' },
+  { path: 'contratos', label: 'Contratos digitais', icon: FileSignature, group: 'Assinaturas e comercial' },
   { path: 'cupons', label: 'Cupons promocionais', icon: Ticket, group: 'Assinaturas e comercial', perm: 'coupons.manage' },
   { path: 'financeiro', label: 'Receita e faturamento', icon: Wallet, group: 'Assinaturas e comercial', perm: 'billing.read' },
   { path: 'suporte', label: 'Suporte e chamados', icon: Headphones, group: 'Operação da plataforma', perm: 'support.manage' },

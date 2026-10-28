@@ -1,4 +1,30 @@
-# Status de Implementação PISTEC — Versão 2.0
+# Status de Implementação PISTEC
+
+## Contratação digital 7.0 (28/10/2026)
+
+| Item | Situação |
+|---|---|
+| Página pública /contrato + links na landing e planos | Implementado e testado (E2E) |
+| Assistente /app/contratar (7 etapas, resumo, CEP, validações, leitura obrigatória) | Implementado; testado com mock (SQL) |
+| Minuta 2026.1 estruturada e parametrizada | Implementado e testado; **pendente de aprovação jurídica** |
+| Identidade jurídica da contratada (histórico) | Implementado e testado |
+| Snapshot comercial congelado, hash SHA-256, PDF no servidor | Implementado e testado |
+| Assinatura eletrônica Autentique (envio, webhook HMAC, reconciliação, reenvio, cancelamento) | Implementado; testado com mock; **pendente de credenciais** |
+| Máquina de estados, eventos idempotentes, imutabilidade | Implementado e testado |
+| Cobrança InfinitePay após assinatura (idempotente) | Implementado; testado com mock; nenhuma cobrança real |
+| E-mail "Seu contrato PISTEC foi assinado com sucesso" (Resend) | Implementado; não disparado |
+| WhatsApp (compartilhamento manual seguro) | Implementado |
+| Minha assinatura → Contratos e documentos | Implementado |
+| Super Admin → Contratos digitais, Modelos e versões, papéis, identidade | Implementado; testado no servidor (SQL) |
+| Tour (8 passos) e 11 artigos de ajuda | Implementado e testado |
+| Aditivo pela interface | Não implementado (modelo de dados pronto) |
+| Migração e Edge Functions em produção | **Não aplicado — aguarda autorização** |
+
+Detalhes: `docs/CONTRACT_*.md`.
+
+---
+
+## Versão 2.0 (histórico)
 
 > Números e estados atuais estão em `docs/QA_FINAL_REPORT.md` (15/10/2026: 156 Vitest, 36 cenários Playwright + 14 larguras, axe 0 violações, só Chrome). O restante deste arquivo é o registro da entrega de 14/10.
 

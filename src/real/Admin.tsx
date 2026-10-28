@@ -13,6 +13,7 @@ import { AdminPush, IntegrationDetail, IntegrationsHub, Jobs } from './admin/Tec
 import { Admins, AuditLog, Permissions, PlatformSettings, SecurityPage } from './admin/Security';
 import { HelpCenter, Tutorials } from './admin/Help';
 import Apps from './admin/Apps';
+import Contracts from './admin/Contracts';
 
 /** Super Admin: o perfil vem do banco (platform_admins). Cada ação é revalidada no servidor. */
 export default function RealAdmin() {
@@ -34,7 +35,7 @@ export default function RealAdmin() {
     <Route path="empresas" element={<Tenants/>}/><Route path="empresas/testes" element={<Tenants view="testes"/>}/><Route path="empresas/inadimplentes" element={<Tenants view="inadimplentes"/>}/>
     <Route path="empresas/:id" element={<TenantDetail/>}/><Route path="onboarding" element={<Tenants view="onboarding"/>}/><Route path="leads" element={<Leads/>}/><Route path="aplicativos" element={<Apps/>}/>
     <Route path="planos" element={<Plans/>}/><Route path="assinaturas" element={<Subscriptions/>}/><Route path="faturas" element={<Invoices/>}/><Route path="cobrancas" element={<Navigate to="/admin/faturas" replace/>}/>
-    <Route path="cupons" element={<Coupons/>}/><Route path="financeiro" element={<Finance/>}/>
+    <Route path="cupons" element={<Coupons/>}/><Route path="contratos" element={<Contracts/>}/><Route path="financeiro" element={<Finance/>}/>
     <Route path="suporte" element={<Support/>}/><Route path="comunicados" element={<Broadcasts/>}/><Route path="notificacoes" element={<AdminPush/>}/><Route path="automacoes" element={<Jobs/>}/>
     <Route path="integracoes" element={<IntegrationsHub/>}/><Route path="integracoes/webhooks" element={<Jobs/>}/><Route path="integracoes/jobs" element={<Jobs/>}/><Route path="integracoes/:slug" element={<IntegrationDetail/>}/>
     <Route path="administradores" element={<Admins/>}/><Route path="permissoes" element={<Permissions/>}/><Route path="auditoria" element={<AuditLog/>}/><Route path="seguranca" element={<SecurityPage/>}/>

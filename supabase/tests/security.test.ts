@@ -14,8 +14,8 @@ afterAll(async () => { await db?.close(); });
 test('helpers internos não são executáveis por clientes, mesmo com membership', async () => {
   const functions = await db.query<{ name: string }>(`select p.proname name from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='app' and has_function_privilege('authenticated',p.oid,'EXECUTE') order by 1`);
-  // admin_can: usado nas políticas RLS; só responde sobre o próprio usuário.
-  expect(functions.rows.map(r => r.name)).toEqual(['admin_can','can_branch','can_read','doc_module','is_member','is_platform_admin','membership','record_module','role_can']);
+  // admin_can, contract_reader, contract_role: usados nas políticas RLS; só respondem sobre o próprio usuário.
+  expect(functions.rows.map(r => r.name)).toEqual(['admin_can','can_branch','can_read','contract_reader','contract_role','doc_module','is_member','is_platform_admin','membership','record_module','role_can']);
   await expect(as(db, restricted, `select app.add_finance($1,$2,'Receita','Teste','Teste',100,current_date,true,'forjado')`, [owner.tenant, owner.branch])).rejects.toThrow(/permission denied/);
 });
 

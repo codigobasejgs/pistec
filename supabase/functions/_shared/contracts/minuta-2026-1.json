@@ -1,0 +1,227 @@
+{
+ "code": "2026.1",
+ "source_file": "docs/contracts/PISTEC_Minuta_Contrato_SaaS_2026.docx",
+ "source_sha256": "5932323f5f535594fefdffe1dc5194cbb51ba4a05f72f44a3ceac740bad479d0",
+ "draft_notice": "MINUTA • sujeita à revisão jurídica e validação das condições comerciais antes da publicação",
+ "body": {
+  "title": "CONTRATO DE LICENÇA DE USO E PRESTAÇÃO DE SERVIÇOS DE SOFTWARE (SaaS)",
+  "subtitle": "PISTEC — Plataforma de Gestão para Oficinas, Motopeças e Autopeças",
+  "summaryTitle": "QUADRO-RESUMO DA CONTRATAÇÃO",
+  "summary": [
+   [
+    "CONTRATADA — nome empresarial",
+    "{{contratada_nome}}"
+   ],
+   [
+    "CNPJ da contratada",
+    "{{contratada_cnpj}}"
+   ],
+   [
+    "Marca da solução",
+    "{{contratada_marca}}"
+   ],
+   [
+    "Natureza jurídica",
+    "{{contratada_natureza}}"
+   ],
+   [
+    "Endereço da contratada",
+    "{{contratada_endereco}}"
+   ],
+   [
+    "Contato cadastral",
+    "{{contratada_contato}}"
+   ],
+   [
+    "CONTRATANTE",
+    "{{empresa_razao_social}} | Nome fantasia: {{empresa_nome_fantasia}}"
+   ],
+   [
+    "CPF/CNPJ e endereço",
+    "{{empresa_documento}} | {{empresa_endereco_completo}}"
+   ],
+   [
+    "Representante e documento",
+    "{{representante_nome}} | CPF: {{representante_cpf}} | Cargo: {{representante_cargo}}"
+   ],
+   [
+    "Contato contratual",
+    "{{representante_email}} | {{representante_telefone}}"
+   ],
+   [
+    "Plano e periodicidade",
+    "{{plano_nome}} | {{periodicidade}}"
+   ],
+   [
+    "Valor e condições",
+    "{{valor_plano}} | {{desconto_cupom_se_houver}} | {{valor_total_contratado}}"
+   ],
+   [
+    "Limites e recursos incluídos",
+    "Conforme ANEXO I gerado automaticamente a partir dos entitlements vigentes"
+   ],
+   [
+    "Teste gratuito, se elegível",
+    "{{dias_teste}} | {{data_inicio_teste}} a {{data_fim_teste}}"
+   ],
+   [
+    "Cobrança e vencimento",
+    "{{meio_cobranca}} | {{data_proximo_vencimento}} | {{regra_renovacao}}"
+   ],
+   [
+    "Contratação/assinatura",
+    "{{data_hora_assinatura}} | Identificador: {{contract_id}}"
+   ]
+  ],
+  "summaryNote": "As condições efetivamente contratadas são as exibidas ao CONTRATANTE imediatamente antes da assinatura e consolidadas neste instrumento e em seus anexos. Campos {{...}} serão preenchidos automaticamente pelo PISTEC e não podem permanecer vazios em contrato final.",
+  "sections": [
+   {
+    "title": "CLÁUSULA 1 — PARTES E DEFINIÇÕES",
+    "paragraphs": [
+     "1.1. CONTRATADA: {{contratada_nome}}, empresário individual inscrito no CNPJ {{contratada_cnpj}}, com endereço e contatos identificados no quadro-resumo, responsável comercial pela solução identificada como PISTEC.",
+     "1.2. CONTRATANTE: pessoa física ou jurídica identificada no quadro-resumo, representada por pessoa com poderes para formalizar a contratação, que declara a correção das informações fornecidas.",
+     "1.3. Plataforma: aplicação PISTEC, disponibilizada na modalidade Software as a Service (SaaS), incluindo os módulos e limites expressamente contratados. Usuários: pessoas autorizadas pelo CONTRATANTE. Dados do Cliente: informações operacionais inseridas na Plataforma sob responsabilidade do CONTRATANTE."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 2 — OBJETO E ESCOPO",
+    "paragraphs": [
+     "2.1. O presente contrato tem por objeto a licença de acesso e uso, não exclusiva, não transferível e limitada ao prazo contratual, da Plataforma PISTEC, destinada à gestão de oficinas mecânicas, motopeças, autopeças e atividades correlatas, conforme o plano e as funcionalidades habilitadas no ANEXO I.",
+     "2.2. Os módulos poderão compreender, conforme plano e disponibilidade efetiva: dashboard, cadastro de produtos e serviços, estoque, PDV e caixa, vendas, clientes, veículos, orçamentos, ordens de serviço, agenda, compras, fornecedores, financeiro, relatórios, equipes, filiais, personalização visual, PWA, notificações e integrações contratadas.",
+     "2.3. Funcionalidades de terceiros, como meios de pagamento, WhatsApp, envio de e-mail, assinatura eletrônica, serviços de IA, emissão fiscal e impressão por equipamentos, somente integram o objeto se previstas no plano e tecnicamente habilitadas. A emissão de documento comercial não fiscal não substitui documento fiscal legalmente exigível.",
+     "2.4. Licenças perpétuas, instalação própria, projetos sob medida e serviços extraordinários exigem instrumento específico e não se presumem incluídos nesta assinatura SaaS."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 3 — PLANO, PREÇO E CONDIÇÕES COMERCIAIS",
+    "paragraphs": [
+     "3.1. O plano, periodicidade, preço, eventual desconto, data de vencimento, limites e recursos vinculantes são os registrados no quadro-resumo e no ANEXO I. A contratação não depende de preços genéricos da landing page quando houver proposta individual aceita.",
+     "3.2. O início de teste gratuito, quando oferecido, terá período, regras e eventual conversão claramente informados antes do aceite. Nenhuma cobrança de assinatura será efetuada fora das condições previamente apresentadas e autorizadas.",
+     "3.3. A cobrança poderá ocorrer por provedor externo habilitado, inclusive InfinitePay, conforme meio efetivamente selecionado. A disponibilização de link de checkout ou retorno ao site não comprova, por si só, a quitação; prevalece a confirmação confiável e conciliada do pagamento.",
+     "3.4. Renovação, periodicidade, reajuste e alterações de preço observarão as condições destacadas no momento da contratação, comunicação prévia adequada e a legislação aplicável. Cobranças já concluídas não serão modificadas retroativamente por mudança posterior de tabela."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 4 — VIGÊNCIA, RENOVAÇÃO, CANCELAMENTO E INADIMPLÊNCIA",
+    "paragraphs": [
+     "4.1. A vigência inicia-se na data definida no quadro-resumo, condicionada às etapas de assinatura, verificação cadastral e pagamento quando exigidas. A periodicidade é a expressamente contratada.",
+     "4.2. O CONTRATANTE poderá solicitar cancelamento pelos canais e pela área de assinatura disponibilizados no PISTEC. A data de encerramento e eventual cobrança remanescente deverão seguir as condições claramente informadas no ANEXO I e as normas aplicáveis, vedadas penalidades ou restrições incompatíveis com a lei.",
+     "4.3. Em caso de inadimplência, a CONTRATADA poderá emitir avisos e aplicar medidas de restrição ou suspensão proporcional, após as notificações e prazos previstos no ANEXO I e na legislação aplicável. A suspensão não autoriza eliminação automática de dados.",
+     "4.4. Direitos legais de desistência, arrependimento, cancelamento e restituição, quando incidentes na relação concreta, prevalecem sobre cláusulas incompatíveis deste instrumento."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 5 — CONTA, USUÁRIOS E RESPONSABILIDADES OPERACIONAIS",
+    "paragraphs": [
+     "5.1. O CONTRATANTE responderá pelo cadastro correto da empresa, pelas permissões atribuídas aos seus usuários, pela guarda de credenciais, pelos dados e documentos inseridos e pela licitude das suas operações comerciais e comunicações.",
+     "5.2. O CONTRATANTE compromete-se a não compartilhar credenciais indevidamente, não tentar acessar dados de outras empresas e não utilizar a Plataforma para finalidades ilícitas, abusivas ou incompatíveis com seus termos.",
+     "5.3. A CONTRATADA deverá fornecer funcionalidades e mecanismos de segurança compatíveis com a prestação contratada, incluindo controles de autenticação, autorização e segregação de empresas, observados os limites técnicos e obrigações legais."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 6 — DISPONIBILIDADE, SUPORTE E ATUALIZAÇÕES",
+    "paragraphs": [
+     "6.1. O serviço será disponibilizado por acesso à internet, sujeito a manutenção, falhas de conexão, indisponibilidades de infraestrutura e serviços de terceiros. Níveis de serviço, horários de atendimento e canais de suporte somente serão vinculantes quando publicados e expressamente incorporados ao ANEXO I.",
+     "6.2. Atualizações, correções de segurança e evoluções de interface poderão ser implementadas para continuidade e proteção do serviço, respeitando a finalidade contratada e comunicação razoável de mudanças substanciais.",
+     "6.3. O uso de PWA depende de recursos do dispositivo e navegador. A instalação ou recebimento de notificações push não é garantido em toda plataforma, versão ou condição de rede."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 7 — DADOS, LGPD E CONFIDENCIALIDADE",
+    "paragraphs": [
+     "7.1. Em regra, o CONTRATANTE determina as finalidades do tratamento dos dados de seus clientes, empregados e operações inseridos no ERP, cabendo à CONTRATADA tratar tais informações para prestação do serviço, segundo instruções documentadas e obrigações legais. Os papéis efetivos de controlador e operador dependem das atividades concretas, conforme ANEXO II.",
+     "7.2. Para dados cadastrais da própria contratação, faturamento, segurança e gestão da plataforma, a CONTRATADA poderá atuar como controladora, conforme política de privacidade e bases legais aplicáveis.",
+     "7.3. As partes deverão adotar medidas técnicas e administrativas proporcionais de segurança, confidencialidade, controle de acesso, registro de incidentes, gestão de prestadores e cooperação no atendimento de direitos dos titulares, conforme LGPD.",
+     "7.4. Serviços terceirizados e eventuais transferências internacionais relevantes serão informados conforme obrigações legais, políticas aplicáveis e instrumentos pertinentes."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 8 — TITULARIDADE, ACESSO E DESTINAÇÃO DOS DADOS",
+    "paragraphs": [
+     "8.1. Os dados operacionais inseridos pelo CONTRATANTE permanecem sob sua esfera de controle, sem que a assinatura atribua à CONTRATADA propriedade comercial sobre os respectivos cadastros, documentos e registros empresariais.",
+     "8.2. Durante a vigência e pelo prazo de exportação definido no ANEXO I, o CONTRATANTE poderá utilizar os mecanismos disponíveis para obter seus dados em formatos documentados, observados requisitos de segurança, integridade e responsabilidades legais.",
+     "8.3. Depois do término, a retenção, exclusão, anonimização e conservação de cópias ocorrerão conforme o ANEXO II, a política de privacidade, obrigações legais e prazos expressamente informados. Não haverá promessa genérica de retenção ilimitada nem exclusão imediata incompatível com dever legal."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 9 — INTEGRAÇÕES, WHATSAPP, E-MAIL E INTELIGÊNCIA ARTIFICIAL",
+    "paragraphs": [
+     "9.1. As integrações com InfinitePay, Resend, Evolution API, Gemini e outros provedores estão sujeitas a disponibilidade, credenciamento, configuração, políticas técnicas, custos e limites específicos de cada serviço, quando expressamente contratadas.",
+     "9.2. O CONTRATANTE é responsável pela base legal para comunicações com seus clientes e pela conformidade do conteúdo enviado por e-mail, WhatsApp ou notificações. A CONTRATADA poderá adotar limites e medidas para prevenir abuso, spam e incidentes.",
+     "9.3. Recursos de IA poderão produzir respostas inexatas; devem ser supervisionados por pessoas autorizadas, especialmente em decisões comerciais, técnicas, financeiras, jurídicas, tributárias ou de segurança. A IA não substitui julgamento profissional nem garante exatidão de respostas."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 10 — PROPRIEDADE INTELECTUAL",
+    "paragraphs": [
+     "10.1. O software, código, interface, marcas, materiais e documentação próprios da CONTRATADA ou de seus licenciadores permanecem protegidos pela legislação aplicável. A contratação não transfere titularidade sobre o PISTEC.",
+     "10.2. Logotipos, marcas e conteúdos enviados pelo CONTRATANTE continuam sob sua responsabilidade e titularidade, autorizando-se seu tratamento e exibição somente na medida necessária para personalização e execução do serviço."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 11 — RESPONSABILIDADES E LIMITAÇÕES",
+    "paragraphs": [
+     "11.1. Cada parte responde por suas condutas, obrigações e danos nos termos da legislação aplicável. A CONTRATADA não garante resultados comerciais específicos, crescimento de receita, ausência absoluta de falhas nem funcionamento universal de equipamentos e integrações externas.",
+     "11.2. Nenhuma previsão deste instrumento afasta responsabilidade legal por dolo, culpa nas hipóteses legalmente aplicáveis, violação de direitos de titulares, obrigações inderrogáveis ou outros direitos que não possam ser excluídos contratualmente."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 12 — ALTERAÇÕES CONTRATUAIS E COMUNICAÇÕES",
+    "paragraphs": [
+     "12.1. Alterações substanciais das condições contratadas serão comunicadas pelos canais informados no cadastro, observado prazo adequado, registro da versão e, quando juridicamente necessário, novo aceite expresso.",
+     "12.2. E-mails e notificações no painel poderão ser usados para avisos contratuais conforme regras informadas e comprováveis. O CONTRATANTE manterá seus dados de contato atualizados."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 13 — ASSINATURA ELETRÔNICA E PROVA",
+    "paragraphs": [
+     "13.1. As partes concordam com a celebração eletrônica deste instrumento por mecanismo que permita identificar signatários, registrar manifestação de vontade, preservar a integridade documental e disponibilizar evidências verificáveis, observada a legislação brasileira pertinente.",
+     "13.2. O documento final deverá conter ou vincular seu identificador único, versão, hash de integridade, identificação dos signatários, datas e horários, meio de autenticação, trilha de auditoria e certificado de conclusão emitido pelo provedor, quando utilizado.",
+     "13.3. O simples preenchimento do formulário, seleção do plano, geração de PDF ou marcação de caixa de ciência não deverá ser apresentado como assinatura completa antes da confirmação do método de assinatura adotado."
+    ]
+   },
+   {
+    "title": "CLÁUSULA 14 — DISPOSIÇÕES GERAIS E FORO",
+    "paragraphs": [
+     "14.1. Este contrato, o quadro-resumo e os Anexos I e II formam um conjunto integrado; em divergência sobre condições individuais de preço, prazo ou limites, prevalecem as condições específicas aceitas e registradas, salvo norma legal cogente.",
+     "14.2. Para relações empresariais em que a eleição de foro seja válida, as partes elegem o foro da Comarca de São Paulo/SP, vinculado ao domicílio da CONTRATADA e à presente contratação, ressalvadas regras legais de competência e de proteção do consumidor que sejam aplicáveis."
+    ]
+   },
+   {
+    "title": "ANEXO I — CONDIÇÕES COMERCIAIS E RECURSOS CONTRATADOS",
+    "paragraphs": [
+     "Plano: {{plano_nome}} — ID/versionamento: {{plano_id}} / {{plano_versao}}.",
+     "Periodicidade: {{periodicidade}}; início: {{data_inicio}}; vencimento: {{data_proximo_vencimento}}.",
+     "Preço base: {{preco_base}}; desconto válido: {{cupom_aplicado}}; total contratado: {{valor_total_contratado}}.",
+     "Renovação: {{regra_renovacao}}; cancelamento: {{regra_cancelamento}}; aviso de reajuste: {{regra_reajuste}}.",
+     "Teste gratuito: {{dias_teste}} e condições {{condicoes_teste}}.",
+     "Tolerância e suspensão por inadimplência: {{prazo_tolerancia}} e {{procedimento_notificacao}}.",
+     "Disponibilidade/SLA e suporte, se contratados: {{condicoes_suporte_sla}}.",
+     "Prazo e formato para exportação após encerramento: {{prazo_exportacao}} / {{formatos_exportacao}}.",
+     "Funcionalidades/limites habilitados: {{snapshot_recursos_entitlements}}.",
+     "Integrações opcionais, seus custos e condições: {{integracoes_contratadas}}."
+    ]
+   },
+   {
+    "title": "ANEXO II — TRATAMENTO DE DADOS E SEGURANÇA (RESUMO OPERACIONAL)",
+    "paragraphs": [
+     "Finalidades e categorias de dados: cadastros empresariais, usuários, produtos, vendas, serviços, clientes, veículos e comunicações operacionais efetivamente utilizadas.",
+     "Papéis das partes: definidos por atividade. O CONTRATANTE normalmente controla dados operacionais de seus clientes; a CONTRATADA presta tratamento técnico necessário e controla dados da própria relação contratual.",
+     "Prestadores/suboperadores: categorias de hospedagem, comunicação, pagamentos, IA e suporte, apenas quando efetivamente ativadas e com instrumentos adequados.",
+     "Medidas: autenticação, autorização por empresa, segregação de dados, registros de auditoria, backup, gestão de acessos e incidentes, conforme implementação contratada e documentação aplicável.",
+     "Cooperação: tratamento de solicitações de titulares, incidentes, exportação e exclusão conforme legislação, contrato e processo documentado.",
+     "Prazos de retenção: {{politica_retencao_versao}} / {{prazo_exportacao}}, sujeitos a obrigações legais de guarda."
+    ]
+   }
+  ],
+  "signatureTitle": "ASSINATURAS ELETRÔNICAS",
+  "signatureBlock": [
+   "CONTRATADA: {{contratada_nome}}  |  CNPJ {{contratada_cnpj}}",
+   "Signatário autorizado: {{signatario_contratada_nome}}  |  Meio/registro: {{assinatura_contratada_referencia}}",
+   "CONTRATANTE: {{empresa_razao_social}}  |  {{empresa_documento}}",
+   "Representante: {{representante_nome}}  |  CPF: {{representante_cpf}}  |  Meio/registro: {{assinatura_cliente_referencia}}",
+   "Data e hora da conclusão: {{data_hora_conclusao}}  |  Hash do PDF: {{sha256_documento}}",
+   "Identificador de verificação e certificado de assinatura: {{url_verificacao_documento}}"
+  ]
+ }
+}

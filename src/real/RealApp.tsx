@@ -25,6 +25,7 @@ import RealAdmin from './Admin';
 import RealWhatsApp from './WhatsApp';
 import BrandApp from './BrandApp';
 import PrintCenter from '../features/documents/PrintCenter';
+import Hire from '../features/contracts/Hire';
 
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
@@ -133,13 +134,14 @@ function RealRoutes() {
   // Aplicativo da empresa (White Label): entrada pública com login da marca.
   if (/^\/m\/[a-z0-9-]+\/?$/.test(location.pathname)) return <Routes><Route path="/m/:slug" element={<BrandApp/>}/></Routes>;
   if (!authReady || loading) return <main className="page" role="status">Carregando sua conta…</main>;
-  if (!auth) return <Navigate to="/login" replace/>;
+  if (!auth) return <Navigate to={/^\/contratar(\/[a-z0-9-]{2,40})?$/.test(location.pathname) ? `/login?next=${encodeURIComponent(location.pathname)}` : '/login'} replace/>;
   if (error) return <main className="page"><h1>Operação indisponível</h1><p role="alert">{error}</p><button className="btn" onClick={refresh}>Recarregar</button><button className="btn" onClick={() => void logout()}>Sair</button><Link to="/">Empresas</Link></main>;
   if (adminRoute && !session.admin) return <main className="page"><h1>Acesso administrativo negado</h1><Link to="/">Voltar</Link></main>;
   if (slug && !session.branchId) return <main className="page"><h1>Nenhuma filial autorizada</h1><Link to="/">Voltar</Link></main>;
   return <DemoContext.Provider value={context}><Routes>
     <Route path="/" element={<main className="page"><h1>Minhas empresas</h1>{state.tenants.filter(t => members.some(m => m.tenant_id === t.id)).map(t => <p key={t.id}><Link className="btn" to={`/loja/${t.slug}/dashboard`}>{t.name}</Link></p>)}<Link className="btn primary" to="/empresa/nova">Cadastrar empresa</Link>{session.admin && <Link className="btn" to="/admin">Administração da plataforma</Link>}<button className="btn" onClick={() => void logout()}>Sair</button><p><a href="/demonstracao">Abrir demonstração isolada</a></p></main>}/>
     <Route path="/empresa/nova" element={<Onboarding refresh={refresh}/>}/>
+    <Route path="/contratar" element={<Hire/>}/><Route path="/contratar/:plano" element={<Hire/>}/>
     <Route path="/convite/:token" element={<Invite refresh={refresh}/>}/>
     <Route path="/loja/:tenantSlug" element={<Layout/>}>
       <Route index element={<Navigate to="dashboard" replace/>}/><Route path="dashboard" element={<Dashboard/>}/><Route path="produtos" element={<Products/>}/><Route path="estoque" element={<Inventory/>}/><Route path="inventario" element={<Inventory/>}/><Route path="pdv" element={<Pos/>}/><Route path="clientes" element={<CustomerRecords/>}/><Route path="vendas" element={<SalesRecords/>}/>

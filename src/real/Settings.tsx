@@ -8,6 +8,7 @@ import type { Tenant } from '../types';
 import { searchHelp } from '../features/settings/help';
 import { supabase } from './client';
 import { integer } from './read';
+import MyContracts from '../features/contracts/MyContracts';
 
 const noDemo = (): never => { throw new Error('Operação disponível somente no ambiente real.'); };
 const roles = ['Administrador', 'Gerente', 'Vendedor', 'Caixa', 'Estoquista', 'Mecânico', 'Atendente', 'Financeiro'] as const;
@@ -138,7 +139,10 @@ function Subscription({ tenant }: { tenant: Tenant }) {
   const input = { p_tenant: tenant.id, p_plan: planId, p_period: period };
   return <><PageHeader title="Minha assinatura" subtitle="Cobrança da assinatura PISTEC, separada das vendas da loja."><Button disabled={read.loading || task.pending} onClick={read.refresh}>Atualizar status</Button></PageHeader>
     <Loaded {...read}>{read.data && <>
-      <Panel title="Assinatura atual">{read.data.subscription ? <><p>Plano: {state.plans.find(p => p.id === read.data?.subscription?.plan_id)?.name ?? read.data.subscription.plan_id}</p><p>Status: {read.data.subscription.status} · {periods[read.data.subscription.period]}</p><p>Fim do período: {date(read.data.subscription.current_period_end)}</p>{read.data.subscription.cancel_at_period_end && <p>Cancelamento agendado para o fim do período.</p>}</> : <p role="status">Nenhuma assinatura encontrada para esta empresa.</p>}</Panel>
+      <Panel title="Assinatura atual">{read.data.subscription ? <><p>Plano: {state.plans.find(p => p.id === read.data?.subscription?.plan_id)?.name ?? read.data.subscription.plan_id}</p><p>Status: {read.data.subscription.status} · {periods[read.data.subscription.period]}</p><p>Fim do período: {date(read.data.subscription.current_period_end)}</p>{read.data.subscription.cancel_at_period_end ? <p>Cancelamento agendado para o fim do período.</p>
+        : session.role === 'Proprietário' && <Button variant="danger" disabled={task.pending} onClick={() => { if (!confirm('Cancelar a assinatura ao fim do período já pago? Sem multa; os dados ficam disponíveis para exportação.')) return;
+          void task.run(async () => { await perform(noDemo, rpc('cancel_subscription', { p_tenant: tenant.id })); read.refresh(); }, 'Cancelamento agendado para o fim do período.'); }}>Cancelar assinatura</Button>}</> : <p role="status">Nenhuma assinatura encontrada para esta empresa.</p>}</Panel>
+      <MyContracts tenantId={tenant.id} slug={tenant.slug} canSign={allowed}/>
       <Panel title="Solicitar fatura"><p>Gerar uma fatura não paga nem altera o plano. A confirmação depende do servidor.</p><form className="stack" onSubmit={e => {
         e.preventDefault();
         void task.run(async () => {

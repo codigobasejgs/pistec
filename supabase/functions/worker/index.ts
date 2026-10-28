@@ -1,6 +1,7 @@
 import { env, HttpError, serve, service } from '../_shared/http.ts';
 import { sendPush } from '../_shared/webpush.ts';
 import { displayFrom, permanent, render } from '../_shared/email.ts';
+import { reconcile } from '../_shared/contracts/reconcile.ts';
 
 // Disparado pelo pg_cron a cada minuto. Cada etapa é independente: falha numa não bloqueia as outras.
 serve(async request => {
@@ -13,6 +14,7 @@ serve(async request => {
   const result: Record<string, unknown> = { outbox: await outbox(db) };
   result.push = await push(db).catch(e => ({ error: e instanceof Error ? e.message : 'push_failed' }));
   result.email = await email(db).catch(e => ({ error: e instanceof Error ? e.message : 'email_failed' }));
+  result.contracts = await contracts(db).catch(e => ({ error: e instanceof Error ? e.message : 'contracts_failed' }));
   return result;
 });
 
@@ -69,4 +71,15 @@ async function email(db: ReturnType<typeof service>) {
     counts[status ?? 'unknown'] = (counts[status ?? 'unknown'] ?? 0) + 1;
   }
   return counts;
+}
+
+// Contratos: expira pedidos vencidos e reconcilia pendentes com a Autentique (cobre webhook perdido). Sem token configurado, só expira.
+async function contracts(db: ReturnType<typeof service>) {
+  const { data: expired } = await db.rpc('svc_contract_expire');
+  if (!Deno.env.get('AUTENTIQUE_API_TOKEN')) return { expired, reconciled: 'skipped' };
+  const { data: pending } = await db.from('tenant_contracts').select('provider_document_id').in('status', ['awaiting_customer', 'awaiting_provider', 'partially_signed'])
+    .not('provider_document_id', 'is', null).lt('updated_at', new Date(Date.now() - 10 * 60_000).toISOString()).limit(10);
+  let reconciled = 0;
+  for (const p of pending ?? []) { await reconcile(db, p.provider_document_id, 'reconcile').then(() => reconciled++).catch(() => null); }
+  return { expired, reconciled };
 }
