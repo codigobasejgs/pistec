@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent, Suspense, lazy } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, ChevronRight, Menu, Package, ShieldCheck, Wrench, X, Zap } from 'lucide-react';
 import { useDemo } from '../../store';
 import { createTenant } from '../../domain';
@@ -75,8 +75,9 @@ function Pricing({ compact = false }: { compact?: boolean }) {
           </>}
           {isEnterprise ?
             <Link className="pub-button pub-button-outline" to="/contato">Falar com consultor<ArrowRight size={16}/></Link> :
-            <Link className={`pub-button ${i === 1 ? '' : 'pub-button-outline'}`} to={`/cadastro?plano=${encodeURIComponent(plan.id)}&periodo=${period}`}>Testar {plan.name} grátis<ArrowRight size={16}/></Link>}
-          {!isEnterprise && <a className="pub-plan-contract" href={`/app/contratar/${encodeURIComponent(plan.id)}`}>Contratar com contrato digital</a>}
+            <a className={`pub-button ${i === 1 ? '' : 'pub-button-outline'}`} href={`/app/contratar/${encodeURIComponent(plan.id)}?periodo=${period}`}>Contratar {plan.name}<ArrowRight size={16}/></a>}
+          {!isEnterprise && <Link className="pub-plan-contract" to={`/cadastro?plano=${encodeURIComponent(plan.id)}&periodo=${period}`}>Experimentar na demonstração (sem cadastro real)</Link>}
+          {!isEnterprise && <small className="pub-plan-note">Você confere o resumo e as condições do contrato antes de qualquer cobrança.</small>}
           <ul>
             {[
               `${plan.users} ${plan.users === 1 ? 'usuário' : 'usuários'} incluídos`,
@@ -447,12 +448,11 @@ function Marketing({ path }: { path: string }) {
   </>;
 }
 
-const PublicContract = lazy(() => import('../contracts/PublicContract'));
 export default function Public() {
   const location = useLocation(); const path = location.pathname.replace(/\/+$/, '') || '/'; const [menu, setMenu] = useState(false);
   useEffect(() => {
     setMenu(false);
-    document.title = `PISTEC — ${path === '/' ? 'Gestão Automotiva Inteligente' : ({ '/planos': 'Planos SaaS', '/cadastro': 'Criar empresa', '/login': 'Acesso demonstrativo', '/demonstracao': 'Demonstração', '/contato': 'Contato', '/contrato': 'Contrato de Prestação de Serviços' }[path] || 'Seu negócio à frente')}`;
+    document.title = `PISTEC — ${path === '/' ? 'Gestão Automotiva Inteligente' : ({ '/planos': 'Planos SaaS', '/cadastro': 'Criar empresa', '/login': 'Acesso demonstrativo', '/demonstracao': 'Demonstração', '/contato': 'Contato' }[path] || 'Seu negócio à frente')}`;
     window.scrollTo(0, 0);
   }, [path]);
 
@@ -470,7 +470,7 @@ export default function Public() {
     <LeadForm recovery={path === '/recuperar-acesso'}/>
   </section>;
   else if (path === '/termos' || path === '/privacidade') content = <Legal privacy={path === '/privacidade'}/>;
-  else if (path === '/contrato') content = <Suspense fallback={<section className="pub-section" role="status">Carregando…</section>}><PublicContract/></Suspense>;
+  else if (path === '/contrato') content = <Navigate to="/planos" replace/>;
   else if (path === '/licenca-perpetua') content = <section className="pub-section pub-split">
     <div>
       <span className="pub-eyebrow">MODALIDADE CORPORATIVA</span>
@@ -493,7 +493,7 @@ export default function Public() {
         {menu ? <X/> : <Menu/>}
       </button>
       <nav id="public-nav" className={menu ? 'is-open' : ''} aria-label="Navegação principal">
-        {[['/funcionalidades', 'Funcionalidades'], ['/oficinas', 'Oficinas'], ['/motopecas', 'Motopeças'], ['/autopecas', 'Autopeças'], ['/planos', 'Planos'], ['/contrato', 'Contrato'], ['/contato', 'Contato']].map(([href, title]) => <Link aria-current={path === href ? 'page' : undefined} to={href} key={href}>{title}</Link>)}
+        {[['/funcionalidades', 'Funcionalidades'], ['/oficinas', 'Oficinas'], ['/motopecas', 'Motopeças'], ['/autopecas', 'Autopeças'], ['/planos', 'Planos'], ['/contato', 'Contato']].map(([href, title]) => <Link aria-current={path === href ? 'page' : undefined} to={href} key={href}>{title}</Link>)}
         <Link to="/login" className="pub-login">Entrar</Link>
         <Link className="pub-button pub-button-small" to="/demonstracao">Ver demonstração<ArrowRight size={15}/></Link>
       </nav>
@@ -507,7 +507,7 @@ export default function Public() {
       </div>
       <div><h3>Produto</h3><Link to="/funcionalidades">Funcionalidades</Link><Link to="/planos">Planos SaaS</Link><Link to="/licenca-perpetua">Licença perpétua</Link><Link to="/demonstracao">Demonstração</Link></div>
       <div><h3>Soluções</h3><Link to="/oficinas">Oficinas mecânicas</Link><Link to="/motopecas">Motopeças</Link><Link to="/autopecas">Autopeças</Link><Link to="/cadastro">Criar empresa</Link></div>
-      <div><h3>Transparência</h3><Link to="/contato">Contato comercial</Link><Link to="/contrato">Contrato de Prestação de Serviços</Link><Link to="/termos">Termos de uso</Link><Link to="/privacidade">Privacidade</Link></div>
+      <div><h3>Transparência</h3><Link to="/contato">Contato comercial</Link><Link to="/termos">Termos de uso</Link><Link to="/privacidade">Privacidade</Link></div>
       <div className="pub-footer-bottom">
         <span>© {new Date().getFullYear()} PISTEC Gestão Automotiva. Todos os direitos reservados.</span>
         <span>Tecnologia automotiva descomplicada.</span>

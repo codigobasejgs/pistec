@@ -4,7 +4,11 @@
 
 | Item | Situação |
 |---|---|
-| Página pública /contrato + links na landing e planos | Implementado e testado (E2E) |
+| ~~Página pública /contrato~~ | Removida (01/11): /contrato redireciona para /planos; contrato aparece dentro da contratação |
+| Contratação iniciada em /planos com plano/periodicidade preservados, resumo e condições antes do cadastro | Implementado e testado (E2E + SQL) |
+| Enterprise sob proposta fora do autoatendimento (`plans.self_service`) | Implementado e testado (SQL) |
+| Descarte de contrato preparado ao trocar plano/corrigir dados | Implementado e testado (SQL) |
+| Licença perpétua com contrato próprio | Não implementado — pendente de minuta jurídica |
 | Assistente /app/contratar (7 etapas, resumo, CEP, validações, leitura obrigatória) | Implementado; testado com mock (SQL) |
 | Minuta 2026.1 estruturada e parametrizada | Implementado e testado; **pendente de aprovação jurídica** |
 | Identidade jurídica da contratada (histórico) | Implementado e testado |

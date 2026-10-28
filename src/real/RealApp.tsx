@@ -5,7 +5,7 @@ import { DemoContext, type DemoContextValue, type Remote } from '../store';
 import type { Role, Session } from '../types';
 import { supabase } from './client';
 import { emptyState, loadRealState } from './read';
-import { signOut } from './auth';
+import { pendingHire, signOut } from './auth';
 import AuthPage from './AuthPage';
 import BrazilianAddressFields from '../features/address/BrazilianAddressFields';
 import { addressErrors, emptyAddress, type Address } from '../services/address';
@@ -35,18 +35,19 @@ const denied = () => { throw new Error('Operação demonstrativa indisponível n
 
 function Onboarding({ refresh }: { refresh: () => void }) {
   const [error, setError] = useState(''), [pending, setPending] = useState(false);
+  const hire = pendingHire(), chosen = hire?.match(/^\/contratar\/([a-z0-9-]+)/)?.[1] ?? 'essencial';
   const [address, setAddress] = useState<Address>(emptyAddress), [addrErrors, setAddrErrors] = useState<Partial<Record<keyof Address, string>>>({});
   const navigate = useNavigate();
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const errs = addressErrors(address); setAddrErrors(errs); if (Object.keys(errs).length) { setError('Revise o endereço da empresa.'); return; }
     const p = { ...Object.fromEntries(new FormData(e.currentTarget)), address }; setPending(true); setError('');
-    try { const { error } = await supabase.rpc('onboard_tenant', { p }); if (error) throw error; refresh(); navigate('/', { replace: true }); }
+    try { const { error } = await supabase.rpc('onboard_tenant', { p }); if (error) throw error; refresh(); navigate(hire ?? '/', { replace: true }); }
     catch (e) { setError(errorText(e)); } finally { setPending(false); }
   }
-  return <main className="page" style={{ maxWidth: 600, margin: 'auto' }}><h1>Cadastrar empresa</h1><form className="stack" onSubmit={submit}>
+  return <main className="page" style={{ maxWidth: 600, margin: 'auto' }}><h1>Cadastrar empresa</h1>{hire && <p className="callout">Depois de cadastrar a empresa você volta para a contratação do plano escolhido, com os dados já preenchidos.</p>}<form className="stack" onSubmit={submit}>
     {([['name', 'Nome fantasia'], ['legalName', 'Razão social'], ['owner', 'Responsável'], ['document', 'CNPJ']] as const).map(([name, label]) => <label className="field" key={name}>{label}<input name={name} required maxLength={120}/></label>)}
     <BrazilianAddressFields legend="Endereço da empresa" value={address} errors={addrErrors} disabled={pending} onChange={a => { setAddress(a); setAddrErrors({}); }}/>
-    <label className="field">Plano<select name="planId"><option value="essencial">Essencial</option><option value="profissional">Profissional</option><option value="premium">Premium</option><option value="enterprise">Enterprise</option></select></label>
+    <label className="field">Plano<select name="planId" defaultValue={chosen}><option value="essencial">Essencial</option><option value="profissional">Profissional</option><option value="premium">Premium</option><option value="enterprise">Enterprise</option></select></label>
     <p>A empresa inicia em teste, conforme as condições do plano. Nenhuma cobrança é confirmada por este cadastro.</p>{error && <p role="alert">{error}</p>}<button className="btn primary" disabled={pending}>Criar empresa</button>
   </form></main>;
 }
@@ -139,7 +140,8 @@ function RealRoutes() {
   // Aplicativo da empresa (White Label): entrada pública com login da marca.
   if (/^\/m\/[a-z0-9-]+\/?$/.test(location.pathname)) return <Routes><Route path="/m/:slug" element={<BrandApp/>}/></Routes>;
   if (!authReady || loading) return <main className="page" role="status">Carregando sua conta…</main>;
-  if (!auth) return <Navigate to={/^\/contratar(\/[a-z0-9-]{2,40})?$/.test(location.pathname) ? `/login?next=${encodeURIComponent(location.pathname)}` : '/login'} replace/>;
+  if (!auth && /^\/contratar(\/[a-z0-9-]{2,40})?$/.test(location.pathname)) return <Routes><Route path="/contratar" element={<Hire/>}/><Route path="/contratar/:plano" element={<Hire/>}/></Routes>;
+  if (!auth) return <Navigate to="/login" replace/>;
   if (error) return <main className="page"><h1>Operação indisponível</h1><p role="alert">{error}</p><button className="btn" onClick={refresh}>Recarregar</button><button className="btn" onClick={() => void logout()}>Sair</button><Link to="/">Empresas</Link></main>;
   if (adminRoute && !session.admin) return <main className="page"><h1>Acesso administrativo negado</h1><Link to="/">Voltar</Link></main>;
   if (slug && !session.branchId) return <main className="page"><h1>Nenhuma filial autorizada</h1><Link to="/">Voltar</Link></main>;

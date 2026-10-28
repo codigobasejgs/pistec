@@ -19,6 +19,15 @@ export async function changePassword(password: string) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
 }
+// Retorno pós-login/cadastro: só a jornada de contratação (sem redirecionamento aberto).
+const HIRE_PATH = /^\/contratar(\/[a-z0-9-]{2,40})?(\?periodo=(monthly|quarterly|annual))?$/;
+export const safeNext = (next: string | null | undefined) => next && HIRE_PATH.test(next) ? next : null;
+// Plano escolhido em /planos (não é dado pessoal): sobrevive à confirmação de e-mail e ao cadastro da empresa.
+const INTENT = 'pistec-hire-intent';
+export function rememberHire(path: string) { try { if (safeNext(path)) localStorage.setItem(INTENT, path); } catch { /* opcional */ } }
+export function pendingHire() { try { return safeNext(localStorage.getItem(INTENT)); } catch { return null; } }
+export function clearHire() { try { localStorage.removeItem(INTENT); } catch { /* opcional */ } }
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;

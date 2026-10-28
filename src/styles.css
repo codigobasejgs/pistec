@@ -691,3 +691,26 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); 
 .pub-form .address-lookup, .pub-form .address-offer .btn { padding: .65rem 1rem; border-radius: 10px; border: 1px solid var(--pub-line); background: var(--pub-raised); color: var(--pub-text); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .pub-form .address-offer { background: var(--pub-raised); border-left-color: var(--pub-cyan); color: var(--pub-text); }
 .pub-form .address-status.ok { color: #4ade80; } .pub-form .address-status.warn { color: #fbbf24; } .pub-form .address-status.error { color: var(--pub-danger); }
+
+/* Contratação a partir de /planos: plano escolhido, condições e documento */
+.hire-chosen { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--secondary); border-radius: var(--radius); background: color-mix(in srgb, var(--secondary) 6%, var(--surface)); }
+.hire-chosen-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hire-chosen-head h3 { margin: 2px 0 0; font-size: 1.3rem; }
+.hire-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 4px 16px; margin: 0; padding-left: 18px; font-size: .88rem; }
+.hire-terms { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); }
+.hire-terms h3 { margin: 0 0 8px; font-size: 1rem; }
+.hire-terms ul { margin: 0 0 8px; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: .88rem; }
+.hire-terms-full { margin: 8px 0; } .hire-terms-full summary { cursor: pointer; font-weight: 600; }
+.hire-terms-full[open] { max-height: 60vh; overflow-y: auto; } .hire-terms-full section { overflow-wrap: anywhere; }
+.hire-auth { margin-top: 16px; }
+.contract-doc-head { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 2px solid var(--secondary); margin-bottom: 12px; }
+.contract-doc-head img { height: 28px; width: auto; } .contract-doc-head div { display: flex; flex-direction: column; min-width: 0; } .contract-doc-head small { color: var(--muted); }
+.contract-plan { margin-bottom: 12px; padding: 14px 16px; border: 1px solid var(--secondary); border-left-width: 4px; border-radius: var(--radius); background: var(--elevated); }
+.contract-plan h3 { margin: 0 0 8px; font-size: .85rem; letter-spacing: .08em; color: var(--secondary); }
+.contract-plan dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 8px 16px; margin: 0; }
+.contract-plan dt { color: var(--muted); font-size: .76rem; } .contract-plan dd { margin: 0; overflow-wrap: anywhere; }
+.contract-plan dl > div:last-child { grid-column: 1 / -1; }
+.contract-toc { margin-bottom: 8px; } .contract-toc summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.contract-toc ol { margin: 6px 0; padding-left: 20px; columns: 2 220px; font-size: .85rem; }
+.hire-agree { align-items: flex-start; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.hire-agree input { margin-top: 3px; flex-shrink: 0; }

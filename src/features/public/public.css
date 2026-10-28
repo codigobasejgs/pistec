@@ -201,24 +201,6 @@
 .adm-quote-total { border-top: 1px solid var(--border); padding-top: .4rem; font-size: 1.1rem; }
 .adm-quote-total dd { color: var(--brand); font-size: 1.2rem; }
 
-/* Contrato de Prestação de Serviços (/contrato) */
-.pub-contract { max-width: 1040px; }
-.pub-contract-grid dl, .hire-summary-body dl { min-width: 0; }
-.pub-contract-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin: 2rem 0; }
-.pub-contract-grid article { min-width: 0; padding: 20px; border: 1px solid var(--pub-line); border-radius: var(--pub-radius); background: var(--pub-surface); }
-.pub-contract-grid h2 { display: flex; align-items: center; gap: 8px; font-size: 1.15rem; }
-.pub-contract-grid dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 0; }
-.pub-contract-grid dt { color: var(--pub-muted); font-size: .85rem; }
-.pub-contract-grid dd { margin: 0; overflow-wrap: anywhere; }
-.pub-small { font-size: .85rem; }
-.pub-contract-draft { padding: 12px 16px; border: 1px solid #b98a1a; border-radius: 12px; background: rgba(255, 176, 32, .1); color: var(--pub-text) !important; }
-.pub-contract-terms { margin-top: 1rem; border: 1px solid var(--pub-line); border-radius: 12px; background: var(--pub-surface); }
-.pub-contract-terms summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
-.pub-contract-terms[open] { max-height: 75vh; overflow-y: auto; }
-.pub-contract-terms > :not(summary) { padding: 0 16px; overflow-wrap: anywhere; }
-.pub-faq-list { display: flex; flex-direction: column; gap: 8px; }
-.pub-faq-list details { border: 1px solid var(--pub-line); border-radius: 12px; background: var(--pub-surface); }
-.pub-faq-list summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
-.pub-faq-list details p { padding: 0 16px 14px; margin: 0; }
+/* Card de plano: contratação (principal) e demonstração (secundária) */
 .pub-plan-contract { display: inline-block; margin-top: 10px; font-size: .88rem; font-weight: 600; }
-@media (max-width: 520px) { .pub-contract-grid dl { grid-template-columns: minmax(0, 1fr); } .pub-contract-grid dd { margin-bottom: 6px; } }
+.pub-plan-note { display: block; margin-top: 6px; color: var(--pub-muted); font-size: .78rem; }

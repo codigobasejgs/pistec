@@ -7,6 +7,8 @@ import { Button, Field, Modal, Panel } from '../../ui';
 import { money } from '../../lib';
 import { call, daysUntil, periods, rows, subscriptionStatus, tenantStatus, useQuery, type PlanRow, type RecordRow } from './data';
 import { useAdmin } from './context';
+import { CONTRACT_STATUS } from '../../features/contracts/MyContracts';
+import { brl } from '../../../supabase/functions/_shared/contracts/template';
 import { ConfirmAction, KeyValue, Loaded, StatusBadge, Tabs, Timeline } from './ui';
 
 type Detail = {
@@ -24,7 +26,7 @@ type Detail = {
   tickets: { id: string; title: string; status: string; date: string }[];
   notes: { id: string; title: string; date: string; history: RecordRow['history'] }[];
 };
-type Tab = 'geral' | 'cadastro' | 'assinatura' | 'cobrancas' | 'usuarios' | 'filiais' | 'integracoes' | 'suporte' | 'auditoria';
+type Tab = 'geral' | 'cadastro' | 'assinatura' | 'contratos' | 'cobrancas' | 'usuarios' | 'filiais' | 'integracoes' | 'suporte' | 'auditoria';
 type Action = null | 'extend' | 'plan' | 'suspend' | 'reactivate' | 'cancel' | 'end_trial' | 'edit';
 const date = (s?: string | null) => s ? new Date(s.length === 10 ? s + 'T12:00:00' : s).toLocaleDateString('pt-BR') : '—';
 
@@ -56,7 +58,7 @@ export default function TenantDetail() {
         </div>
       </header>
       {status && <p role="status" className="callout">{status}</p>}
-      <Tabs<Tab> label="Seções da empresa" value={tab} onChange={v => setParams({ aba: v })} items={[['geral', 'Visão geral'], ['cadastro', 'Dados cadastrais'], ['assinatura', 'Plano e assinatura'],
+      <Tabs<Tab> label="Seções da empresa" value={tab} onChange={v => setParams({ aba: v })} items={[['geral', 'Visão geral'], ['cadastro', 'Dados cadastrais'], ['assinatura', 'Plano e assinatura'], ['contratos', 'Contratos'],
         ...(d.invoices ? [['cobrancas', 'Cobranças'] as [Tab, string]] : []), ['usuarios', 'Usuários'], ['filiais', 'Filiais'], ['integracoes', 'Integrações e consumo'], ['suporte', 'Suporte e notas'],
         ...(d.audit ? [['auditoria', 'Auditoria'] as [Tab, string]] : [])]}/>
 
@@ -70,6 +72,7 @@ export default function TenantDetail() {
         {d.plan?.features.length ? <ul>{d.plan.features.map(f => <li key={f}>{f}</li>)}</ul> : null}</Panel>
         <Panel title="Ciclo de vida"><KeyValue items={[['Situação', s ? subscriptionStatus[s.status] : '—'], ['Gateway', s?.provider], ['Fim do período atual', date(s?.current_period_end)], ['Última alteração', date(s?.updated_at)]]}/>
           <p className="muted small">Alterar o preço de um plano não muda faturas já emitidas: cada fatura guarda o valor no momento da emissão.</p></Panel></div>}
+      {tab === 'contratos' && <TenantContracts tenant={t.id}/>}
       {tab === 'cobrancas' && d.invoices && <Panel title="Faturas da assinatura">{d.invoices.length ? <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Fatura</th><th>Plano</th><th>Valor</th><th>Vencimento</th><th>Situação</th><th>Pagamento</th></tr></thead><tbody>
         {d.invoices.map(i => <tr key={i.id}><td data-label="Fatura"><code>{i.id.slice(0, 8)}</code></td><td data-label="Plano">{i.plan_id} · {periods[i.period]}</td><td data-label="Valor">{money(i.amount)}{i.discount > 0 && <small className="muted"> (−{money(i.discount)} {i.coupon_code})</small>}</td>
           <td data-label="Vencimento">{date(i.due_date)}</td><td data-label="Situação"><StatusBadge>{i.status}</StatusBadge></td><td data-label="Pagamento">{i.paid_at ? `${date(i.paid_at)} · ${i.capture_method === 'manual' ? 'baixa manual' : i.capture_method}` : '—'}</td></tr>)}</tbody></table></div> : <p className="muted">Nenhuma fatura emitida.</p>}</Panel>}
@@ -124,4 +127,14 @@ function SupportTab({ tenant, tickets, notes, reload }: { tenant: string; ticket
     {can('support.manage') && <Link className="btn" to={`/admin/suporte?novo=${tenant}`}>Abrir chamado para esta empresa</Link>}</Panel>
     <Panel title="Observações internas">{notes.map(n => <div key={n.id}><strong>{n.title}</strong><Timeline items={n.history}/></div>)}{!notes.length && <p className="muted">Nenhuma observação.</p>}
       {can('tenants.edit') && <div className="stack"><Field label="Nova observação"><textarea value={text} onChange={e => setText(e.target.value)} maxLength={2000}/></Field><Button disabled={text.trim().length < 3} onClick={() => void addNote()}>Registrar</Button>{error && <p role="alert">{error}</p>}</div>}</Panel></div>;
+}
+
+type ContractRow = { id: string; number: string; status: string; sandbox: boolean; kind: string; commercial: { planName: string; period: string; total: number }; created_at: string; signed_at: string | null; invoice_id: string | null };
+function TenantContracts({ tenant }: { tenant: string }) {
+  const q = useQuery(() => rows<ContractRow>('tenant_contracts', 'id,number,status,sandbox,kind,commercial,created_at,signed_at,invoice_id', b => b.eq('tenant_id', tenant).order('created_at', { ascending: false })), [tenant]);
+  return <Panel title="Contratos da empresa"><Loaded q={q}>{list => list.length ? <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Número</th><th>Plano</th><th>Valor</th><th>Situação</th><th>Data</th><th>Pagamento</th></tr></thead>
+    <tbody>{list.map(c => <tr key={c.id}><td data-label="Número">{c.number}{c.kind === 'addendum' ? ' (aditivo)' : ''}{c.sandbox ? ' · homologação' : ''}</td><td data-label="Plano">{c.commercial.planName} · {periods[c.commercial.period] ?? c.commercial.period}</td>
+      <td data-label="Valor">{brl(c.commercial.total)}</td><td data-label="Situação"><StatusBadge>{CONTRACT_STATUS[c.status] ?? c.status}</StatusBadge></td><td data-label="Data">{date(c.signed_at ?? c.created_at)}</td><td data-label="Pagamento">{c.invoice_id ? 'Fatura gerada' : '—'}</td></tr>)}</tbody></table></div>
+    : <p>Nenhum contrato gerado por esta empresa.</p>}</Loaded>
+    <p className="small"><Link to="/admin/contratos">Abrir Contratos digitais</Link> para detalhes, signatários, histórico, PDFs, reenvio e cancelamento.</p></Panel>;
 }

@@ -24,12 +24,26 @@
 | Cobrança após assinatura, idempotência, confirmação de pagamento | SQL | Testado com mock |
 | Segurança: isolamento entre empresas, usuário sem permissão, `svc_*` bloqueadas, helpers expostos | SQL + `security.test.ts` | Testado |
 | Regressão 6.0: apagar impressora de outra empresa | `documents.test.ts` | Corrigido e testado |
-| Página pública: dados oficiais, aviso de minuta, sem `{{...}}`, links | E2E | Testado |
-| 320 px sem rolagem lateral (/contrato) | E2E + capturas 320/820/1440/2560 em `docs/screenshots/contracts/` | Testado |
+| ~~Página pública /contrato~~ (removida em 01/11; ver abaixo) | — | Substituído |
+| 320 px sem rolagem lateral (/contrato, antes da remoção) | E2E + capturas 320/820/1440/2560 em `docs/screenshots/contracts/` | Testado |
 | Login com retorno para `/contratar/:plano` (sem redirect aberto) | E2E + regex | Testado |
 | Tour (8 passos) e 11 artigos de ajuda; alvos `data-tour` existem | `tours.test.ts`, `help.test.ts` | Testado |
 | Autentique real / sandbox | — | **Pendente de credenciais** |
 | Assistente autenticado ponta a ponta com backend | — | Pendente (migração não aplicada em produção) |
+
+## Correção 01/11/2026 — contrato integrado a /planos
+
+| Verificação | Resultado |
+|---|---|
+| Vitest (inclui SQL) | 283/283 |
+| Playwright (sem o teste contra produção) | 61/61 (11 novos da jornada) |
+| tsc, eslint, build | ok |
+| Contrato = plano escolhido (9 combinações) | testado (SQL) |
+| Sem aba "Contrato" na landing; /contrato → /planos | testado (E2E) |
+| Plano preservado sem login / após login | testado (E2E: URL + intenção guardada) |
+| 320/390/768/1366 px sem rolagem lateral | testado (E2E) |
+| Assinatura sandbox/real | **não executado** — pendente de credenciais e de versão publicada |
+| Pagamento real | **não executado** — sem autorização de cobrança |
 
 ## Achados corrigidos nesta entrega
 

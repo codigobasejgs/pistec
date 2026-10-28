@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { changePassword, requestRecovery, signIn, signUp } from './auth';
+import { changePassword, pendingHire, requestRecovery, safeNext, signIn, signUp } from './auth';
 
 export default function AuthPage({ page }: { page: 'login' | 'cadastro' | 'recuperar' | 'nova-senha' }) {
   const [pending, setPending] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -13,7 +13,7 @@ export default function AuthPage({ page }: { page: 'login' | 'cadastro' | 'recup
     setPending(true); setError(''); setMessage('');
     try {
       // Retorno só para rotas internas da contratação (evita redirecionamento aberto).
-      if (page === 'login') { await signIn(email, password); const next = new URLSearchParams(location.search).get('next') ?? ''; navigate(/^\/contratar(\/[a-z0-9-]{2,40})?$/.test(next) ? next : '/', { replace: true }); }
+      if (page === 'login') { await signIn(email, password); navigate(safeNext(new URLSearchParams(location.search).get('next')) ?? pendingHire() ?? '/', { replace: true }); }
       else if (page === 'cadastro') { await signUp(email, password, String(form.get('name') ?? '')); setMessage('Se o cadastro puder ser concluído, você receberá as instruções por e-mail. Confirme o endereço antes de entrar.'); }
       else if (page === 'recuperar') { await requestRecovery(email); setMessage('Se houver uma conta para este endereço, você receberá as instruções de recuperação.'); }
       else { await changePassword(password); setMessage('Senha atualizada.'); navigate('/', { replace: true }); }
