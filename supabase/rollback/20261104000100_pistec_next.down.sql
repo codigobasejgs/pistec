@@ -1,13 +1,34 @@
 -- ROLLBACK de 20261104000100_pistec_next.sql — executar só com autorização, dentro de transação.
--- ATENÇÃO: apaga dados das tabelas novas (fotos, links do portal, decisões de orçamento, configurações da oficina).
--- Registros 'cotacoes' e 'frotas' em public.records ficam preservados, mas sem RPC de transição própria.
+-- ATENÇÃO: apaga dados das tabelas novas (fotos, links do portal, decisões de orçamento, configurações da oficina, registro de respostas do bot).
+-- Registros 'cotacoes' e 'frotas' em public.records ficam preservados, mas sem RPC de transição própria. Mensagens WhatsApp e ai_settings são mantidas.
 begin;
 drop function if exists public.workshop_settings(uuid), public.save_workshop_settings(uuid, jsonb), public.dismiss_alert(uuid, text, date), public.update_os_work(uuid, uuid, jsonb),
   public.add_record_attachment(uuid, uuid, text, text, boolean), public.set_attachment(uuid, uuid, boolean, boolean), public.create_customer_link(uuid, text, uuid, integer),
   public.revoke_customer_links(uuid, uuid), public.portal_view(text), public.portal_decide(text, uuid, text, text, jsonb, text, text), public.approve_supplier_quote(uuid, uuid, uuid),
   public.authorize_mechanic_ai(uuid, uuid), app.portal_link(text, boolean), app.portal_records(public.customer_links), app.portal_record(public.records), app.quote_hash(public.records), app.agenda_min(text);
-drop function if exists public.whatsapp_message_status(text, text, text), public.svc_bot_pending(integer), public.svc_bot_claim(uuid), public.svc_bot_finish(uuid, text, text), app.bot_skip(uuid, text);
-drop table if exists public.whatsapp_bot_replies, public.estimate_decisions, public.customer_links, public.record_attachments, public.workshop_settings;
+drop function if exists public.whatsapp_bot_status(uuid), public.whatsapp_message_status(text, text, text), public.svc_bot_pending(integer), public.svc_bot_claim(uuid), public.svc_bot_finish(uuid, text, text), app.bot_skip(uuid, text);
+-- admin_integration_summary referencia whatsapp_bot_replies: restaurar antes de apagar a tabela.
+create or replace function public.admin_integration_summary() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform app.require_platform_admin();
+  return jsonb_build_object(
+    'outbox', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.outbox_events group by 1) x),
+    'outboxLastError', (select jsonb_build_object('type', type, 'error', last_error, 'at', coalesce(processed_at, created_at)) from public.outbox_events where last_error is not null and last_error <> 'tenant_removed' order by id desc limit 1),
+    'push', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.notification_deliveries where created_at > now() - interval '7 days' group by 1) x),
+    'pushDevices', (select count(*) from public.push_subscriptions where expired_at is null),
+    'pushLastError', (select jsonb_build_object('status', last_status, 'error', last_error, 'at', created_at) from public.notification_deliveries where status in ('dead','expired') order by id desc limit 1),
+    'email', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.email_messages where created_at > now() - interval '7 days' group by 1) x),
+    'emailLastError', (select jsonb_build_object('template', template, 'error', last_error, 'at', created_at) from public.email_messages where last_error is not null order by created_at desc limit 1),
+    'billing', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.webhook_events where provider = 'InfinitePay' group by 1) x),
+    'billingLastError', (select jsonb_build_object('error', error, 'at', received_at) from public.webhook_events where provider = 'InfinitePay' and error is not null order by id desc limit 1),
+    'whatsapp', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.whatsapp_instances group by 1) x),
+    'ai', (select jsonb_build_object('requests', count(*), 'inputTokens', coalesce(sum(input_tokens), 0), 'outputTokens', coalesce(sum(output_tokens), 0), 'blocked', count(*) filter (where blocked is not null))
+           from public.ai_usage where created_at > now() - interval '30 days')
+  );
+end $$;
+drop function if exists public.email_webhook_event(text, text, text);
+drop table if exists public.email_events, public.whatsapp_bot_replies, public.estimate_decisions, public.customer_links, public.record_attachments, public.workshop_settings;
 
 create or replace function app.record_module(p_kind text) returns text
 language sql immutable set search_path = '' as $$
@@ -161,6 +182,13 @@ begin
   where id = r.id;
   perform app.audit(p_tenant, r.id || ': ' || v_status, 'record', r.id::text);
   perform app.emit(p_tenant, 'record.status', jsonb_build_object('kind', r.kind, 'recordId', r.id, 'title', r.title, 'from', r.status, 'to', v_status, 'customerId', r.customer_id));
+end $$;
+
+create or replace function public.set_whatsapp_bot(p_tenant uuid, p_instance uuid, p_enabled boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform app.require(p_tenant, 'whatsapp', 'configurar');
+  update public.whatsapp_instances set bot_enabled = p_enabled, updated_at = now() where tenant_id = p_tenant and id = p_instance;
 end $$;
 
 delete from supabase_migrations.schema_migrations where version = '20261104000100';

@@ -1,5 +1,9 @@
 # Status de Implementação PISTEC
 
+## Operação produção 12.0 (29/10/2026) — pronto para publicar, aguardando autorização
+
+Go/No-Go: `docs/PISTEC_RELEASE_BLOCKERS.md`. Release: `docs/PISTEC_PRODUCTION_RELEASE.md`. Integrações comprovadas: `docs/PISTEC_PRODUCTION_INTEGRATIONS.md`. QA: `docs/PISTEC_RELEASE_QA.md` (334 unit/SQL, 67 E2E, ensaio de migrations no banco real). Rollback: `docs/PISTEC_RELEASE_ROLLBACK.md`.
+
 ## PISTEC NEXT 11.0 — produção (29/10/2026)
 
 Auditoria real e correções locais; nada publicado. Ver `docs/PRODUCTION_READINESS.md` (runtime de cada integração e estado observado), `docs/PISTEC_NEXT_PRODUCTION_MATRIX.md` (25 linhas classificadas), `docs/PISTEC_NEXT_E2E_REPORT.md` (67/67 E2E), `docs/PISTEC_NEXT_ROLLBACK.md` e os relatórios por serviço.

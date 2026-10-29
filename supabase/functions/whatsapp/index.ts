@@ -57,13 +57,14 @@ serve(async request => {
   if (action === 'logout') { await evo.logout(instance); await db.rpc('whatsapp_connection', { p_instance: instance, p_state: 'close' }); return { state: 'close' }; }
   if (action === 'send') {
     const to = evo.recipient(input.to), message = text(input.text, 'Mensagem', 4000);
-    const { data: contact } = await client.from('whatsapp_contacts').select('id').eq('tenant_id', tenant).eq('remote_jid', `${to}@s.whatsapp.net`).maybeSingle();
+    const jid = to.endsWith('@lid') ? to : `${to}@s.whatsapp.net`;
+    const { data: contact } = await client.from('whatsapp_contacts').select('id').eq('tenant_id', tenant).eq('remote_jid', jid).maybeSingle();
     // Só responde conversas existentes (cliente iniciou): evita disparo em massa para números arbitrários.
     if (!contact) throw new HttpError(403, 'Só é possível responder conversas iniciadas pelo cliente.');
     const sent = await evo.sendText(instance, to, message);
     const id = String(sent?.key?.id ?? '');
     if (!id) throw new HttpError(502, 'Envio sem confirmação do WhatsApp.');
-    await db.rpc('whatsapp_inbound', { p_instance: instance, p_external_id: id, p_remote: `${to}@s.whatsapp.net`, p_body: message, p_from_me: true, p_status: 'sent' });
+    await db.rpc('whatsapp_inbound', { p_instance: instance, p_external_id: id, p_remote: jid, p_body: message, p_from_me: true, p_status: 'sent' });
     return { sent: true, id };
   }
   throw new HttpError(400, 'Ação inválida.');

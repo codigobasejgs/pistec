@@ -672,3 +672,67 @@ begin
     'bot', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.whatsapp_bot_replies where created_at > now() - interval '7 days' group by 1) x)
   );
 end $$;
+
+-- ---------------------------------------------------------------- Bot: o interruptor da loja liga instância e canal WhatsApp da IA juntos.
+-- A IA em si (ai_settings.enabled) continua liberada pelo Super Admin/plano; sem ela o bot fica registrado como "quota_or_disabled".
+create or replace function public.set_whatsapp_bot(p_tenant uuid, p_instance uuid, p_enabled boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform app.require(p_tenant, 'whatsapp', 'configurar');
+  if p_enabled and not app.plan_feature(p_tenant, 'assistente') then perform app.fail('IA não incluída no plano atual.', '42501'); end if;
+  update public.whatsapp_instances set bot_enabled = p_enabled, updated_at = now() where tenant_id = p_tenant and id = p_instance;
+  if not found then perform app.fail('Instância não encontrada.'); end if;
+  insert into public.ai_settings (tenant_id, whatsapp_bot) values (p_tenant, p_enabled)
+  on conflict (tenant_id) do update set whatsapp_bot = excluded.whatsapp_bot, updated_at = now();
+  perform app.audit(p_tenant, case when p_enabled then 'Assistente automático do WhatsApp ativado' else 'Assistente automático do WhatsApp desativado' end, 'whatsapp', p_instance::text);
+end $$;
+
+-- Situação da IA para a tela do WhatsApp (sem custos, sem chaves).
+create or replace function public.whatsapp_bot_status(p_tenant uuid) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s public.ai_settings; v_plan public.plans := app.plan_of(p_tenant);
+begin
+  perform app.require(p_tenant, 'whatsapp', 'visualizar');
+  select * into s from public.ai_settings where tenant_id = p_tenant;
+  return jsonb_build_object('planIncludes', app.plan_feature(p_tenant, 'assistente'), 'aiEnabled', coalesce(s.enabled, false), 'channel', coalesce(s.whatsapp_bot, false),
+    'dailyLimit', least(coalesce(s.daily_limit, 50), v_plan.ai_messages), 'usedToday', (select count(*) from public.ai_usage where tenant_id = p_tenant and created_at >= date_trunc('day', now())),
+    'last7', (select coalesce(jsonb_object_agg(status, n), '{}') from (select status, count(*) n from public.whatsapp_bot_replies where tenant_id = p_tenant and created_at > now() - interval '7 days' group by 1) x));
+end $$;
+revoke all on function public.whatsapp_bot_status(uuid) from public, anon;
+grant execute on function public.whatsapp_bot_status(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- Resend: histórico de eventos (dedupe por svix-id) e estados completos
+create table public.email_events (
+  event_id text primary key,                -- svix-id (único por entrega do webhook; reenvio do mesmo evento não duplica)
+  provider_id text not null,
+  type text not null,
+  email_message_id uuid references public.email_messages(id) on delete cascade,
+  tenant_id uuid,
+  result text not null,
+  received_at timestamptz not null default now()
+);
+create index on public.email_events (provider_id);
+alter table public.email_events enable row level security;
+alter table public.email_events force row level security;
+grant select, insert, update, delete on public.email_events to service_role;
+
+-- Estado só avança (sent → delivered); bounce/complaint são finais; failed só antes de entregue; delayed não muda estado.
+create or replace function public.email_webhook_event(p_event_id text, p_provider_id text, p_type text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare m public.email_messages; v text := case p_type when 'email.delivered' then 'delivered' when 'email.bounced' then 'bounced' when 'email.complained' then 'complained' when 'email.failed' then 'failed' end; r text;
+begin
+  if p_event_id is null or length(p_event_id) not between 4 and 120 or p_provider_id is null or length(p_provider_id) > 120 then return 'invalid'; end if;
+  select * into m from public.email_messages where provider_id = p_provider_id for update;
+  r := case when m.id is null then 'unknown' when v is null then 'recorded'
+    when v = 'delivered' and m.status = 'sent' then 'delivered'
+    when v in ('bounced', 'complained') and m.status in ('sent', 'delivered') then v
+    when v = 'failed' and m.status = 'sent' then 'failed' else 'kept' end;
+  insert into public.email_events (event_id, provider_id, type, email_message_id, tenant_id, result) values (p_event_id, p_provider_id, left(p_type, 60), m.id, m.tenant_id, r) on conflict (event_id) do nothing;
+  if not found then return 'duplicate'; end if;
+  if r in ('delivered', 'bounced', 'complained', 'failed') then
+    update public.email_messages set status = r, last_error = case when r in ('bounced', 'complained', 'failed') then 'provider:' || p_type else last_error end where id = m.id;
+  end if;
+  return r;
+end $$;
+revoke all on function public.email_webhook_event(text, text, text) from public, anon, authenticated;
+grant execute on function public.email_webhook_event(text, text, text) to service_role;

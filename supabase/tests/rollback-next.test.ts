@@ -24,3 +24,9 @@ test('rollback 20261104000100 restaura save_record/transition_record e preserva 
   const id = await rpc('save_record', [A.tenant, { branchId: A.branch, kind: 'ordens-servico', title: 'OS ok', customerId: customer, fields: { technician: 'x', dueDate: '2099-01-01', complaint: 'x', labor: '10,00' } }]);
   expect(id).toBeTruthy();
 }, 180000);
+
+test('rollback: set_whatsapp_bot e resumo do Super Admin voltam à versão anterior', async () => {
+  const src = (await db.query<{ s: string }>("select string_agg(prosrc, '|') s from pg_proc where proname in ('set_whatsapp_bot', 'admin_integration_summary')")).rows[0].s;
+  expect(src).not.toMatch(/whatsapp_bot_replies|ai_settings/);
+  expect((await db.query("select 1 from pg_proc where proname in ('svc_bot_claim','whatsapp_bot_status','portal_view')")).rows).toEqual([]);
+});

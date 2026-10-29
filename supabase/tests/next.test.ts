@@ -181,3 +181,19 @@ test('WhatsApp: bot responde no máximo uma vez por mensagem, respeita atendimen
   await expect(as(db, A.user, 'select public.svc_bot_claim($1)', [m1.id])).rejects.toThrow();
   expect(await as(db, B.user, 'select id from public.whatsapp_messages')).toEqual([]);
 });
+
+test('Resend: evento repetido não duplica; estado só avança; desconhecido registrado sem efeito', async () => {
+  await db.query("insert into public.email_messages (tenant_id, to_email, template, subject, html, idempotency_key, status, provider_id) values ($1, 'h@x.invalid', 'welcome', 's', 'h', 'k-email-1', 'sent', 'RS-1')", [A.tenant]);
+  const ev = (id: string, type: string, pid = 'RS-1') => service<{ r: string }>(db, 'select public.email_webhook_event($1, $2, $3) r', [id, pid, type]).then(r => r[0].r);
+  expect(await ev('msg_1', 'email.sent')).toBe('recorded');
+  expect(await ev('msg_2', 'email.delivered')).toBe('delivered');
+  expect(await ev('msg_2', 'email.delivered')).toBe('duplicate');
+  expect(await ev('msg_3', 'email.failed')).toBe('kept');
+  expect(await ev('msg_4', 'email.bounced')).toBe('bounced');
+  expect(await ev('msg_5', 'email.delivered')).toBe('kept');
+  expect(await ev('msg_6', 'email.delivered', 'NAO-EXISTE')).toBe('unknown');
+  const [row] = (await db.query<{ status: string }>("select status from public.email_messages where provider_id = 'RS-1'")).rows;
+  expect(row.status).toBe('bounced');
+  expect((await db.query<{ n: number }>("select count(*)::int n from public.email_events where provider_id = 'RS-1'")).rows[0].n).toBe(5);
+  await expect(as(db, A.user, "select public.email_webhook_event('x1234', 'RS-1', 'email.delivered')")).rejects.toThrow();
+});

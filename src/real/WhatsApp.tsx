@@ -29,7 +29,9 @@ export default function WhatsApp() {
   const current = contacts.find(c => c.id === selected);
   const canManage = ['Proprietário', 'Administrador'].includes(session.role);
 
+  const [bot, setBot] = useState<{ planIncludes: boolean; aiEnabled: boolean; channel: boolean; dailyLimit: number; usedToday: number; last7: Record<string, number> } | null>(null);
   const load = useCallback(async () => {
+    void supabase.rpc('whatsapp_bot_status', { p_tenant: session.tenantId }).then(({ data }) => setBot(data ?? null));
     const [i, c] = await Promise.all([
       supabase.from('whatsapp_instances').select('id,status,bot_enabled,phone').eq('tenant_id', session.tenantId).neq('status', 'archived').order('created_at').limit(1).maybeSingle(),
       supabase.from('whatsapp_contacts').select('id,remote_jid,name,assigned_to,bot_paused,last_message_at').eq('tenant_id', session.tenantId).order('last_message_at', { ascending: false }).limit(100),
@@ -52,7 +54,15 @@ export default function WhatsApp() {
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, session.tenantId]);
-  useEffect(() => { if (current) void loadMessages(current); }, [current, loadMessages]);
+  useEffect(() => {
+    if (!current) return;
+    void loadMessages(current);
+    // Status de entrega (enviada → entregue → lida) chega por UPDATE em whatsapp_messages.
+    const channel = supabase.channel(`wa-msg:${current.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_messages', filter: `tenant_id=eq.${session.tenantId}` }, () => void loadMessages(current))
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [current, loadMessages, session.tenantId]);
 
   async function run(action: () => Promise<unknown>, done: string) {
     setPending(true); setError(''); setStatus('');
@@ -78,6 +88,8 @@ export default function WhatsApp() {
         {instance?.status === 'open' && <Button disabled={pending} onClick={() => { if (window.confirm('Desconectar o WhatsApp da loja? As mensagens deixam de chegar até reconectar.')) void run(() => call(session.tenantId, 'logout'), 'WhatsApp desconectado.'); }}>Desconectar</Button>}
         {instance && <label><input type="checkbox" checked={instance.bot_enabled} disabled={pending} onChange={e => void run(() => rpc('set_whatsapp_bot', { p_tenant: session.tenantId, p_instance: instance.id, p_enabled: e.target.checked }), e.target.checked ? 'Assistente automático ativado.' : 'Assistente automático desativado.')}/> Assistente automático (IA) responde clientes</label>}
       </div>}
+      {instance?.bot_enabled && bot && <p className="small" role="status">{!bot.planIncludes ? 'O plano atual não inclui IA: o assistente não responde.' : !bot.aiEnabled ? 'A IA ainda não foi liberada para esta empresa pela equipe PISTEC: o assistente não responde.' : instance.status !== 'open' ? 'O assistente só responde com o WhatsApp conectado.'
+        : `Assistente ativo · ${bot.usedToday}/${bot.dailyLimit} respostas de IA hoje · últimos 7 dias: ${Object.entries(bot.last7).map(([k, n]) => `${({ sent: 'respondidas', skipped: 'não respondidas', failed: 'falhas', claimed: 'em andamento' } as Record<string, string>)[k] ?? k} ${n}`).join(', ') || 'nenhuma mensagem'}`}</p>}
       {qr && <img src={qr} alt="QR Code para conectar o WhatsApp da loja" width={260} height={260}/>}
       {!canManage && !instance && <p>Peça ao proprietário para conectar o WhatsApp da loja.</p>}
     </Panel>
@@ -97,7 +109,7 @@ export default function WhatsApp() {
             {current.bot_paused && <Button disabled={pending} onClick={() => void run(() => rpc('assign_whatsapp_contact', { p_tenant: session.tenantId, p_contact: current.id, p_user: current.assigned_to, p_bot_paused: false }), 'Assistente automático reativado nesta conversa.')}>Devolver ao assistente</Button>}
           </div>
           <ol className="stack" aria-label="Mensagens" style={{ maxHeight: 420, overflowY: 'auto' }}>{messages.map(m => <li key={m.id} style={{ textAlign: m.direction === 'out' ? 'right' : 'left' }}>
-            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{m.body || '(mídia)'}</p><small>{m.direction === 'out' ? 'Loja' : 'Cliente'} · {new Date(m.created_at).toLocaleString('pt-BR')}</small></li>)}</ol>
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{m.body || '(mídia)'}</p><small>{m.direction === 'out' ? 'Loja' : 'Cliente'} · {new Date(m.created_at).toLocaleString('pt-BR')}{m.direction === 'out' && ` · ${({ pending: 'enviando', sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'não entregue' } as Record<string, string>)[m.status] ?? m.status}`}</small></li>)}</ol>
           <form className="stack" onSubmit={send}>
             <Field label="Resposta"><textarea required maxLength={4000} value={text} onChange={e => setText(e.target.value)}/></Field>
             <div className="toolbar">{QUICK.map(q => <Button key={q} onClick={() => setText(q)}>{q.slice(0, 28)}…</Button>)}</div>
