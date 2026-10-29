@@ -4,9 +4,9 @@ import minuta from '../../../supabase/functions/_shared/contracts/minuta-2026-1.
 // Respostas do Supabase interceptadas (catálogo e minuta em rascunho, como em produção hoje). Sem login.
 const provider = { legalName: '59.760.458 MARCO ANTONIO BOGGIAN', document: '59.760.458/0001-91', legalNature: 'Empresário Individual', brand: 'PISTEC', address: 'Rua Jacques Pilon, 189, Vila Piauí, São Paulo/SP, CEP 05109-160', email: 'marco.boggian@gmail.com', phone: '(11) 3621-8304' };
 const plans = [
-  { id: 'essencial', name: 'Essencial', monthly: 12900, quarterly: 34900, annual: 123900, trialDays: 14, users: 2, branches: 1, products: 500, whatsapp: 1, aiMessages: 0, features: ['PDV e caixa'], modules: [] },
-  { id: 'profissional', name: 'Profissional', monthly: 24900, quarterly: 66900, annual: 238900, trialDays: 14, users: 5, branches: 1, products: 5000, whatsapp: 2, aiMessages: 30, features: ['Ordens de serviço'], modules: [] },
-  { id: 'premium', name: 'Premium', monthly: 44900, quarterly: 120900, annual: 430900, trialDays: 14, users: 15, branches: 3, products: 20000, whatsapp: 5, aiMessages: 200, features: ['Múltiplas filiais'], modules: ['*'] },
+  { id: 'essencial', name: 'Essencial', monthly: 12900, quarterly: 34900, annual: 123900, trialDays: 30, users: 2, branches: 1, products: 500, whatsapp: 1, aiMessages: 0, features: ['PDV e caixa'], modules: [] },
+  { id: 'profissional', name: 'Profissional', monthly: 24900, quarterly: 66900, annual: 238900, trialDays: 30, users: 5, branches: 1, products: 5000, whatsapp: 2, aiMessages: 30, features: ['Ordens de serviço'], modules: [] },
+  { id: 'premium', name: 'Premium', monthly: 44900, quarterly: 120900, annual: 430900, trialDays: 30, users: 15, branches: 3, products: 20000, whatsapp: 5, aiMessages: 200, features: ['Múltiplas filiais'], modules: ['*'] },
 ];
 async function mockBackend(page: Page) {
   await page.route(/\/rest\/v1\/rpc\/contract_catalog/, r => r.fulfill({ json: { plans, provider, version: null, draft: { code: minuta.code, title: minuta.body.title, status: 'draft' } } }));

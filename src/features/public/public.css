@@ -204,3 +204,6 @@
 /* Card de plano: contratação (principal) e demonstração (secundária) */
 .pub-plan-contract { display: inline-block; margin-top: 10px; font-size: .88rem; font-weight: 600; }
 .pub-plan-note { display: block; margin-top: 6px; color: var(--pub-muted); font-size: .78rem; }
+/* Oferta de teste gratuito (1 mês) */
+.pub-trial-offer { padding: .7rem .9rem; border-radius: 10px; border-left: 3px solid var(--pub-cyan); background: rgba(25, 201, 232, .08); color: var(--pub-text) !important; }
+.pub-plan-trial { color: var(--pub-cyan-strong) !important; font-weight: 600; }

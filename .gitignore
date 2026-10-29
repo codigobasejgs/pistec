@@ -17,3 +17,5 @@ references/
 
 .vercel
 dist-tools/
+
+.vitest/

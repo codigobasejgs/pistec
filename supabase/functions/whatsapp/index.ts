@@ -41,6 +41,8 @@ serve(async request => {
         await evo.createInstance(name, hook.href);
       }
     }
+    // Instâncias antigas foram criadas só com MESSAGES_UPSERT/CONNECTION_UPDATE: atualiza a assinatura sem trocar a URL/token.
+    await evo.syncWebhook(instance!).catch(() => null);
     const qr = await evo.connect(instance!);
     // QR em base64 para exibição imediata; não é persistido.
     return { instance, qr: typeof qr?.base64 === 'string' && qr.base64.startsWith('data:image/') ? qr.base64 : null, pairingCode: qr?.pairingCode ?? null };

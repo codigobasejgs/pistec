@@ -17,20 +17,21 @@ async function health(probe = false): Promise<Health> {
 }
 
 // Estados separados: configuração (variáveis) ≠ conectividade (respondeu) ≠ operação (uso real observado).
-const services: Record<string, { name: string; purpose: string; key: string; metric?: string; error?: string; operational?: (m: Record<string, unknown>) => boolean; docs: string[] }> = {
-  infinitepay: { name: 'InfinitePay', key: 'InfinitePay', purpose: 'Cobrança das assinaturas das empresas (checkout Pix/cartão e confirmação por webhook).', metric: 'billing', error: 'billingLastError',
+const services: Record<string, { name: string; purpose: string; key: string; metric?: string; real?: string; error?: string; operational?: (m: Record<string, unknown>) => boolean; docs: string[] }> = {
+  infinitepay: { name: 'InfinitePay', key: 'InfinitePay', purpose: 'Cobrança das assinaturas das empresas (checkout Pix/cartão e confirmação por webhook).', metric: 'billing', real: 'billing', error: 'billingLastError',
     operational: m => Number((m.billing as Record<string, number>)?.processed ?? 0) > 0, docs: ['Webhook: /functions/v1/billing-webhook?token=… (configurado no checkout).', 'Pagamento só é confirmado após consulta payment_check no servidor.', 'A API não tem recorrência automática: a renovação gera uma fatura nova 5 dias antes.'] },
-  resend: { name: 'Resend', key: 'Resend', purpose: 'E-mails transacionais (boas-vindas, convites, faturas, avisos de vencimento).', metric: 'email', error: 'emailLastError',
+  resend: { name: 'Resend', key: 'Resend', purpose: 'E-mails transacionais (boas-vindas, convites, faturas, avisos de vencimento).', metric: 'email', real: 'email', error: 'emailLastError',
     operational: m => Number((m.email as Record<string, number>)?.sent ?? 0) + Number((m.email as Record<string, number>)?.delivered ?? 0) > 0, docs: ['Pendências comuns: EMAIL_FROM exige domínio verificado no Resend.', 'RESEND_WEBHOOK_SECRET: crie o webhook apontando para /functions/v1/email-webhook.', 'Sem EMAIL_FROM os e-mails ficam na fila, sem se perder.'] },
-  evolution: { name: 'Evolution API', key: 'Evolution', purpose: 'WhatsApp de cada loja (QR Code, mensagens recebidas e enviadas).', metric: 'whatsapp',
+  evolution: { name: 'Evolution API', key: 'Evolution', purpose: 'WhatsApp de cada loja (QR Code, mensagens recebidas e enviadas, bot com IA).', metric: 'whatsapp', real: 'whatsappOut',
     operational: m => Number((m.whatsapp as Record<string, number>)?.open ?? 0) > 0, docs: ['Cada loja conecta o próprio número em WhatsApp → Conectar.', 'Webhook por instância com token próprio; a chave global fica só no servidor.'] },
-  gemini: { name: 'Gemini', key: 'Gemini', purpose: 'Assistente de IA interno (consultas somente leitura, com limite diário por plano).', metric: 'ai',
+  gemini: { name: 'Gemini', key: 'Gemini', purpose: 'IA: assistente interno, Mecânico por voz e bot do WhatsApp, com limite diário por empresa e plano.', metric: 'ai', real: 'ai',
     operational: m => Number((m.ai as Record<string, number>)?.requests ?? 0) > 0, docs: ['AI_ENABLED=true libera o assistente na plataforma.', 'Cada empresa ativa a IA e o limite em Configurações da loja (até o limite do plano).'] },
-  push: { name: 'Web Push', key: 'WebPush', purpose: 'Notificações no celular e computador, mesmo com o PISTEC fechado.', metric: 'push', error: 'pushLastError',
+  push: { name: 'Web Push', key: 'WebPush', purpose: 'Notificações no celular e computador, mesmo com o PISTEC fechado.', metric: 'push', real: 'push', error: 'pushLastError',
     operational: m => Number((m.push as Record<string, number>)?.sent ?? 0) > 0, docs: ['Chaves VAPID no servidor + VITE_VAPID_PUBLIC_KEY no frontend.', 'iPhone/iPad só recebem com o app instalado na Tela de Início (iOS 16.4+).'] },
   jobs: { name: 'Filas e automações', key: 'Worker', purpose: 'Worker executado a cada minuto (pg_cron): notificações, e-mails, push e cobrança diária.', metric: 'outbox', error: 'outboxLastError',
     operational: m => Number((m.outbox as Record<string, number>)?.done ?? 0) > 0, docs: ['Eventos com falha definitiva podem ser reprocessados em Automações e filas.'] },
 };
+const lastReal = (h: Health, s: typeof services[string]) => { const v = s.real ? (h.metrics.lastReal as Record<string, string | null> | undefined)?.[s.real] : null; return v ? new Date(v).toLocaleString('pt-BR') : 'Nenhuma registrada'; };
 const fmt = (v: unknown) => v && typeof v === 'object' ? Object.entries(v).map(([k, n]) => `${k}: ${String(n)}`).join(' · ') || 'Nenhum uso ainda' : String(v ?? 'Nenhum uso ainda');
 
 function stateOf(h: Health, s: typeof services[string]) {
@@ -51,7 +52,7 @@ export function IntegrationsHub() {
       <div className="grid grid-3" data-tour="admin-integrations">{Object.entries(services).map(([slug, s]) => { const st = stateOf(h, s);
         return <Panel key={slug} className="integration-card"><div className="panel-heading"><h2><Icon label={st.label}/>{s.name}</h2><StatusBadge>{st.label}</StatusBadge></div><p className="muted small">{s.purpose}</p>
           <KeyValue items={[['Configuração', st.missing.length ? `Falta: ${st.missing.join(', ')}` : 'Completa'], ['Conectividade', st.conn ? `${st.conn.ok ? 'OK' : 'Falhou'} · ${st.conn.detail} (${st.conn.ms} ms)` : 'Não testada'],
-            ['Uso registrado', fmt(h.metrics[s.metric ?? ''])], ['Última falha', st.err ? fmt(st.err) : 'Nenhuma']]}/>
+            ['Uso registrado', fmt(h.metrics[s.metric ?? ''])], ['Última operação real', lastReal(h, s)], ['Última falha', st.err ? fmt(st.err) : 'Nenhuma']]}/>
           {slug !== 'jobs' && <Link className="btn ghost" to={`/admin/integracoes/${slug}`}>Detalhes</Link>}</Panel>; })}</div></>}</Loaded></div>;
 }
 
@@ -62,7 +63,7 @@ export function IntegrationDetail() {
   return <div className="page"><Link className="btn ghost" to="/admin/integracoes">← Central de integrações</Link><PageHeader title={s.name} subtitle={s.purpose}/>
     <Loaded q={q}>{h => { const st = stateOf(h, s); return <div className="grid grid-2">
       <Panel title="Situação"><KeyValue items={[['Estado', <StatusBadge key="s">{st.label}</StatusBadge>], ['Variáveis', Object.entries(h.config[s.key] ?? {}).map(([k, ok]) => `${ok ? '✓' : '✗'} ${k}`).join('  ')],
-        ['Conectividade', st.conn ? `${st.conn.ok ? 'OK' : 'Falhou'} · ${st.conn.detail}` : 'Seu perfil não executa diagnóstico'], ['Uso', fmt(h.metrics[s.metric ?? ''])], ['Última falha', st.err ? fmt(st.err) : 'Nenhuma'],
+        ['Conectividade', st.conn ? `${st.conn.ok ? 'OK' : 'Falhou'} · ${st.conn.detail}` : 'Seu perfil não executa diagnóstico'], ['Uso', fmt(h.metrics[s.metric ?? ''])], ['Última operação real', lastReal(h, s)], ...(slug === 'evolution' ? [['Respostas do bot (7 dias)', fmt(h.metrics.bot)] as [string, string]] : []), ['Última falha', st.err ? fmt(st.err) : 'Nenhuma'],
         ...(slug === 'infinitepay' ? [['Checkout', h.flags.billing ? 'Ativado' : 'Desativado (BILLING_ENABLED)'] as [string, string]] : []), ...(slug === 'gemini' ? [['Assistente', h.flags.ai ? 'Ativado' : 'Desativado (AI_ENABLED)'] as [string, string]] : [])]}/></Panel>
       <Panel title="Como configurar"><ul>{s.docs.map(d => <li key={d}>{d}</li>)}</ul><p className="muted small">Segredos são definidos só no servidor (Supabase → Edge Functions → Secrets). Nunca cole chaves em campos desta tela.</p></Panel>
       {slug === 'gemini' && <AiUsage/>}{slug === 'evolution' && <WhatsAppUsage/>}{slug === 'push' && <Panel title="Notificações deste administrador"><Link className="btn" to="/admin/notificacoes">Ativar e testar push neste dispositivo</Link></Panel>}

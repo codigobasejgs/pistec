@@ -20,8 +20,10 @@ const WhatsApp=lazy(()=>import('./features/erp/WhatsApp'));
 const Settings=lazy(()=>import('./features/settings/Settings'));
 const PrintCenter=lazy(()=>import('./features/documents/PrintCenter'));
 const PublicDocument=lazy(()=>import('./features/documents/PublicDocument'));
-const recordModules=['clientes','categorias','aplicacoes','vendas','crm','veiculos','orcamentos','ordens-servico','agenda','compras','fornecedores','automacoes','funcionarios','filiais','notificacoes','tarefas','garantias'];
-function Module(){const {module}=useParams(); if(recordModules.includes(module??''))return <Records key={module}/>;return <NotFound/>;}
+const recordModules=['clientes','categorias','aplicacoes','vendas','crm','veiculos','orcamentos','ordens-servico','agenda','compras','fornecedores','automacoes','funcionarios','filiais','notificacoes','tarefas','garantias','cotacoes','frotas'];
+const nextPages: Record<string, ReturnType<typeof lazy>> = { autopilot: lazy(() => import('./features/next/AutoPilot')), checkin: lazy(() => import('./features/next/CheckIn')), mecanico: lazy(() => import('./features/next/Mechanic')),
+  'estoque-inteligente': lazy(() => import('./features/next/SmartStock')), 'lucro-os': lazy(() => import('./features/next/Profit')), fideliza: lazy(() => import('./features/next/Loyalty')), 'moto-express': lazy(() => import('./features/next/MotoExpress')) };
+function Module(){const {module}=useParams(); const Next=nextPages[module??'']; if(Next)return <Next/>; if(recordModules.includes(module??''))return <Records key={module}/>;return <NotFound/>;}
 function RealAdminRedirect(){useEffect(()=>{location.replace('/app/admin');},[]);return <div className="boot-screen" role="status">Abrindo acesso seguro…</div>;}
 function NotFound(){return <div className="error-page"><h1>404 · Caminho não encontrado</h1><p>Este endereço não corresponde a uma página do PISTEC.</p><Link className="btn primary" to="/demonstracao">Abrir demonstração</Link></div>;}
 class ErrorBoundary extends Component<{children:ReactNode},{error:boolean}>{state={error:false};static getDerivedStateFromError(){return {error:true};}render(){if(this.state.error)return <div className="error-page"><h1>Não foi possível abrir esta tela</h1><p>Seus dados locais não foram apagados. Recarregue para tentar novamente.</p><button className="btn primary" onClick={()=>location.reload()}>Recarregar</button></div>;return this.props.children;}}
@@ -32,8 +34,11 @@ const RealApp = lazy(() => import('./real/RealApp'));
 const real = location.pathname === '/app' || location.pathname.startsWith('/app/');
 // Consulta pública de documento por link seguro: não carrega a demonstração nem o ERP.
 const publicDoc = /^\/d\/[0-9a-f]{48}\/?$/.test(location.pathname);
+// Portal do Cliente (consumidor final da oficina): só o escopo do token, com a marca da oficina.
+const portal = /^\/c\/[0-9a-f]{48}\/?$/.test(location.pathname);
+const CustomerPortal = lazy(() => import('./features/next/CustomerPortal'));
 initPwa();
-createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><NoticeProvider>{publicDoc ? <Suspense fallback={<div className="boot-screen" role="status">Carregando documento…</div>}><PublicDocument/></Suspense> : real
+createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><NoticeProvider>{portal ? <Suspense fallback={<div className="boot-screen" role="status">Carregando…</div>}><CustomerPortal/></Suspense> : publicDoc ? <Suspense fallback={<div className="boot-screen" role="status">Carregando documento…</div>}><PublicDocument/></Suspense> : real
   ? <Suspense fallback={<div className="boot-screen" role="status">Carregando acesso seguro…</div>}><RealApp/><PwaNotices/></Suspense>
   : <DemoProvider><BrowserRouter><App/><PwaNotices/></BrowserRouter></DemoProvider>
 }</NoticeProvider></ErrorBoundary></StrictMode>);

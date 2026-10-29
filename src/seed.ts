@@ -2,10 +2,10 @@
 import { completeSale, openCash, closeCash, receivePurchase, transitionRecord, convertRecord, validateState, domainClock } from './domain';
 
 export const PLANS: Plan[] = [
-  { id: 'essencial', name: 'Essencial', monthly: 12900, quarterly: 34900, annual: 123900, users: 2, branches: 1, products: 500, whatsapp: 1, trialDays: 14, features: ['PDV e caixa', 'Produtos e estoque', 'Clientes', 'Financeiro básico'] },
-  { id: 'profissional', name: 'Profissional', monthly: 24900, quarterly: 66900, annual: 238900, users: 5, branches: 1, products: 5000, whatsapp: 2, trialDays: 14, features: ['Tudo do Essencial', 'Ordens de serviço', 'Compras', 'Relatórios', 'WhatsApp'] },
-  { id: 'premium', name: 'Premium', monthly: 44900, quarterly: 120900, annual: 430900, users: 15, branches: 3, products: 20000, whatsapp: 5, trialDays: 14, features: ['Tudo do Profissional', 'Múltiplas filiais', 'CRM', 'Automações', 'Personalização'] },
-  { id: 'enterprise', name: 'Enterprise', monthly: 79900, quarterly: 239700, annual: 958800, users: 100, branches: 20, products: 100000, whatsapp: 20, trialDays: 14, features: ['Tudo do Premium', 'Implantação assistida', 'Limites ampliados', 'Suporte prioritário'] },
+  { id: 'essencial', name: 'Essencial', monthly: 12900, quarterly: 34900, annual: 123900, users: 2, branches: 1, products: 500, whatsapp: 1, trialMonths: 1, features: ['PDV e caixa', 'Produtos e estoque', 'Clientes', 'Financeiro básico'] },
+  { id: 'profissional', name: 'Profissional', monthly: 24900, quarterly: 66900, annual: 238900, users: 5, branches: 1, products: 5000, whatsapp: 2, trialMonths: 1, features: ['Tudo do Essencial', 'Ordens de serviço', 'Compras', 'Relatórios', 'WhatsApp'] },
+  { id: 'premium', name: 'Premium', monthly: 44900, quarterly: 120900, annual: 430900, users: 15, branches: 3, products: 20000, whatsapp: 5, trialMonths: 1, features: ['Tudo do Profissional', 'Múltiplas filiais', 'CRM', 'Automações', 'Personalização'] },
+  { id: 'enterprise', name: 'Enterprise', monthly: 79900, quarterly: 239700, annual: 958800, users: 100, branches: 20, products: 100000, whatsapp: 20, trialMonths: 1, features: ['Tudo do Premium', 'Implantação assistida', 'Limites ampliados', 'Suporte prioritário'] },
 ];
 
 export const INITIAL_SESSION: Session = { tenantId: 'tenant-premium', branchId: 'branch-premium-matriz', role: 'Proprietário', name: 'Carlos Silva', admin: false };

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { trialLabel } from '../../services/trial';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button, Field, PageHeader, Panel } from '../../ui';
@@ -76,11 +77,11 @@ export function SecurityPage() {
 }
 
 export function PlatformSettings() {
-  const plans = useQuery(() => rows<{ id: string; name: string; trial_days: number }>('plans', 'id,name,trial_days', b => b.order('sort')), []);
+  const plans = useQuery(() => rows<{ id: string; name: string; trial_months: number }>('plans', 'id,name,trial_months', b => b.order('sort')), []);
   return <div className="page"><PageHeader title="Configurações" subtitle="Parâmetros vigentes da plataforma. Valores com link são editados na página indicada."/>
     <div className="grid grid-2">
       <Panel title="Identidade PISTEC"><KeyValue items={[['Nome', 'PISTEC — Tecnologia que move seu negócio'], ['Logotipo', <img key="l" src="/brand/logo-horizontal.webp" alt="Logotipo PISTEC" height={32}/>], ['Cores', 'Azul-marinho #061B3D · Azul #007BFF · Ciano #00E5FF'], ['Contato da plataforma', 'pistec.gestao@gmail.com']]}/></Panel>
-      <Panel title="Comercial"><Loaded q={plans}>{p => <KeyValue items={p.map(x => [`Teste grátis · ${x.name}`, `${x.trial_days} dias`] as [string, string])}/>}</Loaded><Link className="btn ghost" to="/admin/planos">Editar nos planos</Link></Panel>
+      <Panel title="Comercial · Teste gratuito"><p className="small">Política vigente desde 03/11/2026: <strong>1 mês calendário</strong> a partir do cadastro (fuso de São Paulo; se o dia não existir no mês seguinte, vale o último dia). Avisos 7, 3 e 1 dia antes e no último dia. Sem cobrança durante o teste. Empresas cadastradas antes mantêm o prazo concedido.</p><Loaded q={plans}>{p => <KeyValue items={p.map(x => [`Teste grátis · ${x.name}`, trialLabel(x.trial_months ?? 1)] as [string, string])}/>}</Loaded><Link className="btn ghost" to="/admin/planos">Editar nos planos</Link></Panel>
       <Panel title="Assinaturas"><KeyValue items={[['Fatura de renovação', '5 dias antes do fim do período'], ['Tolerância após vencimento', '5 dias (depois: suspensão)'], ['Suspensão', 'Acesso somente leitura; dados preservados'], ['Cancelamento', 'Ao fim do período pago'], ['Rotina de cobrança', 'Diária às 03:15 UTC (pg_cron)']]}/></Panel>
       <Panel title="Notificações"><KeyValue items={[['Canais', 'No sistema, push e e-mail (quando o Resend estiver ativo)'], ['Limite de push', '30 por usuário a cada 10 minutos'], ['Limite de e-mail', '50 por empresa por hora'], ['Processamento', 'Worker a cada minuto']]}/><Link className="btn ghost" to="/admin/integracoes">Ver integrações</Link></Panel>
       <Panel title="Sistema"><KeyValue items={[['Ambiente', 'Produção (Supabase + Vercel)'], ['Versão do app', String(import.meta.env.VITE_APP_VERSION ?? 'build atual')], ['Service worker', 'Único (PWA + push)']]}/></Panel>

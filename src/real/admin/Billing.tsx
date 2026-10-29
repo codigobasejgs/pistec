@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { trialLabel } from '../../services/trial';
 import { useNavigate } from 'react-router-dom';
 import { Download, Plus } from 'lucide-react';
 import { Button, Field, Modal, PageHeader, Panel, Stat } from '../../ui';
@@ -36,7 +37,7 @@ export function Plans() {
     try {
       await call('admin_save_plan', { p: { id: edit !== 'new' ? edit?.id : '', name: f.get('name'), monthly: cents(f.get('monthly')), quarterly: cents(f.get('quarterly')), annual: cents(f.get('annual')),
         users: Number(f.get('users')), branches: Number(f.get('branches')), products: Number(f.get('products')), whatsapp: Number(f.get('whatsapp')), aiMessages: Number(f.get('aiMessages')),
-        trialDays: Number(f.get('trialDays')), sort: Number(f.get('sort')), active: f.get('active') === 'on', features: String(f.get('features')).split('\n').map(s => s.trim()).filter(Boolean) } });
+        trialMonths: Number(f.get('trialMonths')), sort: Number(f.get('sort')), active: f.get('active') === 'on', features: String(f.get('features')).split('\n').map(s => s.trim()).filter(Boolean) } });
       setEdit(null); q.reload();
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao salvar.'); } finally { setPending(false); }
   };
@@ -45,15 +46,15 @@ export function Plans() {
   return <div className="page"><PageHeader title="Planos SaaS" subtitle="Preços e limites usados na landing, no cadastro e nas faturas. Alterar preço não muda faturas já emitidas.">{canEdit && <Button variant="primary" icon={<Plus size={15}/>} onClick={() => setEdit('new')}>Novo plano</Button>}</PageHeader>
     <Loaded q={q}>{plans => <div className="grid grid-4" data-tour="admin-plans">{plans.map(pl => <Panel key={pl.id} className={pl.active ? '' : 'is-muted'} title={pl.name}>
       <p className="plan-price">{money(pl.monthly)}<small>/mês</small></p><p className="muted small">Trimestral {money(pl.quarterly)} · Anual {money(pl.annual)}</p>
-      <ul className="plan-limits"><li>{pl.users} usuários</li><li>{pl.branches} filiais</li><li>{pl.products.toLocaleString('pt-BR')} produtos</li><li>{pl.whatsapp} WhatsApp</li><li>{pl.ai_messages} consultas IA/dia</li><li>{pl.trial_days} dias de teste</li></ul>
+      <ul className="plan-limits"><li>{pl.users} usuários</li><li>{pl.branches} filiais</li><li>{pl.products.toLocaleString('pt-BR')} produtos</li><li>{pl.whatsapp} WhatsApp</li><li>{pl.ai_messages} consultas IA/dia</li><li>{trialLabel(pl.trial_months ?? 1)}</li></ul>
       <p className="small"><StatusBadge>{pl.active ? 'Ativo' : 'Inativo'}</StatusBadge> · {usage.data?.filter(t => t.plan_id === pl.id && t.status !== 'Cancelada').length ?? '…'} empresa(s)</p>
       {canEdit && <Button onClick={() => setEdit(pl)}>Editar</Button>}</Panel>)}</div>}</Loaded>
     {edit && <Modal title={p ? `Editar plano ${p.name}` : 'Novo plano'} open onClose={() => setEdit(null)} size="lg"><form className="stack" onSubmit={submit}>
       <fieldset><legend>Identificação</legend><div className="form-grid"><Field label="Nome"><input name="name" required defaultValue={p?.name} maxLength={60}/></Field><Field label="Ordem na landing"><input name="sort" type="number" min={0} defaultValue={p?.sort ?? 9}/></Field>
         <label><input type="checkbox" name="active" defaultChecked={p?.active ?? true}/> Ativo (aparece para novas contratações)</label></div></fieldset>
       <fieldset><legend>Preços (R$)</legend><div className="form-grid"><Field label="Mensal"><input name="monthly" inputMode="decimal" required defaultValue={reais(p?.monthly)}/></Field><Field label="Trimestral"><input name="quarterly" inputMode="decimal" required defaultValue={reais(p?.quarterly)}/></Field><Field label="Anual"><input name="annual" inputMode="decimal" required defaultValue={reais(p?.annual)}/></Field></div></fieldset>
-      <fieldset><legend>Limites</legend><div className="form-grid">{([['users', 'Usuários', p?.users], ['branches', 'Filiais', p?.branches], ['products', 'Produtos', p?.products], ['whatsapp', 'Instâncias WhatsApp', p?.whatsapp], ['aiMessages', 'Consultas IA por dia', p?.ai_messages], ['trialDays', 'Dias de teste (0–90)', p?.trial_days ?? 14]] as const).map(([k, l, v]) =>
-        <Field key={k} label={l}><input name={k} type="number" min={0} max={k === 'trialDays' ? 90 : undefined} required defaultValue={v ?? 0}/></Field>)}</div></fieldset>
+      <fieldset><legend>Limites</legend><div className="form-grid">{([['users', 'Usuários', p?.users], ['branches', 'Filiais', p?.branches], ['products', 'Produtos', p?.products], ['whatsapp', 'Instâncias WhatsApp', p?.whatsapp], ['aiMessages', 'Consultas IA por dia', p?.ai_messages], ['trialMonths', 'Meses de teste grátis (0–3)', p?.trial_months ?? 1]] as const).map(([k, l, v]) =>
+        <Field key={k} label={l}><input name={k} type="number" min={0} max={k === 'trialMonths' ? 3 : undefined} required defaultValue={v ?? 0}/></Field>)}</div></fieldset>
       <Field label="Recursos exibidos na landing (um por linha)"><textarea name="features" rows={4} defaultValue={p?.features.join('\n')}/></Field>
       {error && <p role="alert" className="field-error">{error}</p>}<div className="toolbar"><Button onClick={() => setEdit(null)}>Cancelar</Button><Button type="submit" variant="primary" loading={pending}>Salvar plano</Button></div></form></Modal>}
   </div>;

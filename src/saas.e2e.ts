@@ -48,6 +48,25 @@ test('Super Admin não existe na demonstração: /admin leva ao login real', asy
   await page.goto('/loja/moto-prime/dashboard');
   await expect(page.locator('.account-button')).not.toContainText('Super Admin');
   await page.goto('/');
-  await expect(page.getByRole('link', { name: /Testar grátis por 14 dias/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Começar meu mês grátis/ }).first()).toBeVisible();
   await expect(page.locator('img[src="/screenshots/dashboard.webp"]').first()).toBeVisible();
+  for (const path of ['/', '/planos', '/termos', '/privacidade']) { await page.goto(path); await expect(page.locator('body')).not.toContainText(/protótipo|roadmap|IndexedDB/); }
+});
+
+test('contato comercial envia ao servidor (submit_lead) e mostra falha real quando indisponível', async ({ page }) => {
+  let body: Record<string, unknown> | null = null;
+  await page.route('**/rest/v1/rpc/submit_lead', async route => { body = route.request().postDataJSON(); await route.fulfill({ status: 204, body: '' }); });
+  await page.goto('/contato');
+  await page.getByLabel('Seu nome').fill('Ana Teste'); await page.getByLabel('E-mail').fill('ana@exemplo.invalid');
+  await page.getByLabel(/autorizo o contato/).check();
+  await page.getByRole('button', { name: 'Enviar mensagem' }).click();
+  await expect(page.getByText('Recebemos sua mensagem.')).toBeVisible();
+  expect(body).toMatchObject({ p: { name: 'Ana Teste', email: 'ana@exemplo.invalid' } });
+  await page.unroute('**/rest/v1/rpc/submit_lead');
+  await page.route('**/rest/v1/rpc/submit_lead', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"erro"}' }));
+  await page.goto('/contato');
+  await page.getByLabel('Seu nome').fill('Ana Teste'); await page.getByLabel('E-mail').fill('ana@exemplo.invalid');
+  await page.getByLabel(/autorizo o contato/).check();
+  await page.getByRole('button', { name: 'Enviar mensagem' }).click();
+  await expect(page.getByRole('alert')).toContainText('Não foi possível enviar agora');
 });

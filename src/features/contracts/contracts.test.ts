@@ -29,7 +29,7 @@ describe('minuta oficial e preenchimento', () => {
     expect(text).not.toMatch(/\{\{/);
     expect(f.summary[0][1]).toBe('59.760.458 MARCO ANTONIO BOGGIAN');
     expect(text).toContain('59.760.458/0001-91'); expect(text).toContain('11.222.333/0001-81'); expect(text).toContain('529.982.247-25');
-    expect(text).toContain('R$ 249,00'); expect(text).toContain('10 dias'); expect(text).toContain('até 5 usuários');
+    expect(text).toContain('R$ 249,00'); expect(text).toContain('teste gratuito de 1 mês calendário (10 dia(s)'); expect(text).toContain('até 5 usuários');
     expect(f.draftNotice).toBeNull();
   });
   it('rascunho/sandbox são marcados; variável vazia impede gerar documento final', () => {

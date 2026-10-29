@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { trialDaysLeft } from '../services/trial';
 import BrazilianAddressFields from '../features/address/BrazilianAddressFields';
 import { addressErrors, emptyAddress, toAddress, type Address } from '../services/address';
 import { Link, useLocation } from 'react-router-dom';
@@ -153,6 +154,11 @@ function Subscription({ tenant }: { tenant: Tenant }) {
   const input = { p_tenant: tenant.id, p_plan: planId, p_period: period };
   return <><PageHeader title="Minha assinatura" subtitle="Cobrança da assinatura PISTEC, separada das vendas da loja."><Button disabled={read.loading || task.pending} onClick={read.refresh}>Atualizar status</Button></PageHeader>
     <Loaded {...read}>{read.data && <>
+      {read.data.subscription?.status === 'trialing' && (() => { const left = trialDaysLeft(read.data.subscription.current_period_end);
+        return <Panel title="Teste gratuito"><div className="trial-card" data-tour="sub-trial"><strong>{left >= 0 ? 'Seu teste gratuito está ativo.' : 'Seu teste gratuito terminou.'}</strong>
+          <p>{left >= 0 ? <>Você pode utilizar os recursos do seu plano até <strong>{date(read.data.subscription.current_period_end)}</strong> ({left === 0 ? 'termina hoje' : left === 1 ? 'falta 1 dia' : `faltam ${left} dias`}).</> : <>O teste terminou em {date(read.data.subscription.current_period_end)}.</>}</p>
+          <p className="small">Para continuar depois do teste, contrate o plano. Nada é cobrado durante o teste e seus dados não são apagados.</p>
+          {allowed && <a className="btn primary" href={`/app/contratar/${read.data.subscription.plan_id}?periodo=${read.data.subscription.period}&empresa=${encodeURIComponent(tenant.slug)}`}>Contratar meu plano</a>}</div></Panel>; })()}
       <Panel title="Assinatura atual">{read.data.subscription ? <><p>Plano: {state.plans.find(p => p.id === read.data?.subscription?.plan_id)?.name ?? read.data.subscription.plan_id}</p><p>Status: {read.data.subscription.status} · {periods[read.data.subscription.period]}</p><p>Fim do período: {date(read.data.subscription.current_period_end)}</p>{read.data.subscription.cancel_at_period_end ? <p>Cancelamento agendado para o fim do período.</p>
         : session.role === 'Proprietário' && <Button variant="danger" disabled={task.pending} onClick={() => { if (!confirm('Cancelar a assinatura ao fim do período já pago? Sem multa; os dados ficam disponíveis para exportação.')) return;
           void task.run(async () => { await perform(noDemo, rpc('cancel_subscription', { p_tenant: tenant.id })); read.refresh(); }, 'Cancelamento agendado para o fim do período.'); }}>Cancelar assinatura</Button>}</> : <p role="status">Nenhuma assinatura encontrada para esta empresa.</p>}</Panel>

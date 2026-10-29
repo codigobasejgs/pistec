@@ -65,7 +65,7 @@ export function useQuery<T>(load: () => Promise<T>, deps: unknown[] = []) {
 export type TenantRow = { id: string; slug: string; name: string; legal_name: string; document: string; owner_name: string; email: string; phone: string;
   plan_id: string; status: string; due_date: string; created_at: string; profile: string };
 export type PlanRow = { id: string; name: string; monthly: number; quarterly: number; annual: number; users: number; branches: number; products: number;
-  whatsapp: number; ai_messages: number; trial_days: number; features: string[]; modules: string[]; active: boolean; sort: number };
+  whatsapp: number; ai_messages: number; trial_days: number; trial_months: number; features: string[]; modules: string[]; active: boolean; sort: number };
 export type InvoiceRow = { id: string; tenant_id: string; plan_id: string; period: string; amount: number; original_amount: number; discount: number; coupon_code: string | null;
   status: string; due_date: string; provider: string; request_id: string; paid_at: string | null; paid_amount: number | null; capture_method: string | null; created_at: string };
 export type RecordRow = { id: string; kind: string; title: string; status: string; date: string; fields: Record<string, string>; history: { date: string; text: string; author?: string; internal?: boolean }[] };

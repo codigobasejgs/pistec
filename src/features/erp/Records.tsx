@@ -20,6 +20,8 @@ const readAddr = (fields: Record<string, string>) => Object.fromEntries(ADDR.map
 const DOC_KINDS = ['orcamentos', 'ordens-servico', 'compras'];
 import { cents, decimal, inPeriod, matches, sumItems } from './logic';
 import { ExportButton, FormActions, ItemEditor, SearchBox, SelectField, TextField, useErp, useSearchQuery } from './shared';
+import { CustomerLinkButton } from '../next/CustomerLink';
+import { QuotePanel } from '../next/QuotePanel';
 
 const STATUS_COLORS: Record<string, string> = {
   // OS
@@ -89,7 +91,7 @@ function DomainRecords({ kind }: { kind: string }) {
       }
       if (config.customer && !edit.customerId) throw new Error('Selecione o cliente.');
       if (edit.items.some(item => !Number.isInteger(item.quantity) || item.quantity < 1 || !Number.isSafeInteger(item.price) || item.price < 0)) throw new Error('Revise quantidades e preços dos itens.');
-      if (['compras', 'orcamentos', 'ordens-servico'].includes(kind) && !edit.items.length && !(edit.fields.labor && cents(edit.fields.labor) > 0)) throw new Error('Adicione produtos ou um valor de mão de obra.');
+      if (['compras', 'orcamentos', 'ordens-servico'].includes(kind) && !edit.items.length && !(edit.fields.labor && cents(edit.fields.labor) > 0) && !edit.fields.checkin) throw new Error('Adicione produtos ou um valor de mão de obra.');
       if (kind === 'compras' && !edit.items.length) throw new Error('Adicione os produtos da compra.');
       if (kind === 'aplicacoes' && Number(edit.fields.yearEnd) < Number(edit.fields.yearStart)) throw new Error('Ano final deve ser igual ou posterior ao inicial.');
       if (kind === 'veiculos' && !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(edit.fields.plate.replace(/[-\s]/g, '').toUpperCase())) throw new Error('Informe uma placa brasileira válida.');
@@ -182,8 +184,8 @@ function DomainRecords({ kind }: { kind: string }) {
     const rDate = record.fields.scheduledDate || record.date.slice(0, 10);
     const rTime = record.fields.time || '';
     const rDur = Number(record.fields.duration || 60);
-    const rResp = record.fields.responsible || '';
-    if (!rDate || !rTime || !rResp) return false;
+    const rResp = record.fields.responsible || '', rBox = record.fields.box || '';
+    if (!rDate || !rTime || (!rResp && !rBox)) return false;
     const [rh, rm] = rTime.split(':').map(Number);
     const rStart = rh * 60 + rm, rEnd = rStart + rDur;
     return records.some(other => {
@@ -192,7 +194,7 @@ function DomainRecords({ kind }: { kind: string }) {
       const oTime = other.fields.time || '';
       const oDur = Number(other.fields.duration || 60);
       const oResp = other.fields.responsible || '';
-      if (oDate !== rDate || oResp !== rResp || !oTime) return false;
+      if (oDate !== rDate || !oTime || !((rResp && oResp === rResp) || (rBox && other.fields.box === rBox))) return false;
       const [oh, om] = oTime.split(':').map(Number);
       const oStart = oh * 60 + om, oEnd = oStart + oDur;
       return Math.max(rStart, oStart) < Math.min(rEnd, oEnd);
@@ -248,7 +250,7 @@ function DomainRecords({ kind }: { kind: string }) {
           <strong>{record.fields.time || '—'} · {record.title}</strong>
           <Badge>{record.status}</Badge>
         </div>
-        {conflict && <div className="callout warning" style={{ padding: '4px 8px', fontSize: '.75rem' }}><AlertTriangle size={12} aria-hidden="true" /> Conflito de horário para {record.fields.responsible}</div>}
+        {conflict && <div className="callout warning" style={{ padding: '4px 8px', fontSize: '.75rem' }}><AlertTriangle size={12} aria-hidden="true" /> Conflito de horário ({record.fields.responsible || record.fields.box})</div>}
         <div className="meta">
           {cust && <span><User size={13} aria-hidden="true" /> {cust.name}</span>}
           {record.fields.responsible && <span>Mecânico: {record.fields.responsible}</span>}
@@ -426,7 +428,7 @@ function DomainRecords({ kind }: { kind: string }) {
         {config.customer && <SelectField label="Cliente" value={edit.customerId} required onChange={value => setEdit({ ...edit, customerId: value, fields: { ...edit.fields, vehicleId: '' } })}><option value="">Selecione</option>{customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</SelectField>}
         {config.vehicle && <SelectField label="Veículo do cliente" value={edit.fields.vehicleId || ''} onChange={value => setField('vehicleId', value)}><option value="">Sem veículo</option>{tenantRecords.filter(record => record.kind === 'veiculos' && record.customerId === edit.customerId).map(record => <option key={record.id} value={record.id}>{record.title} · {record.fields.plate}</option>)}</SelectField>}
         {config.fields.map(field => field.type === 'address' ? <div key={field.key} className="form-span">{edit.fields[field.key] && !hasAddress(readAddr(edit.fields)) && <p className="muted small">Endereço anterior (texto livre): {edit.fields[field.key]}</p>}<BrazilianAddressFields legend={field.required ? field.label : `${field.label} (opcional)`} required={field.required} value={readAddr(edit.fields)}
-          onChange={a => setEdit(cur => cur ? { ...cur, fields: { ...cur.fields, ...Object.fromEntries(ADDR.map(k => [`addr_${k}`, a[k]])), [field.key]: Object.keys(addressErrors(a)).length ? cur.fields[field.key] ?? '' : formatAddress(a) } } : cur)}/></div> : field.type === 'textarea' ? <label key={field.key} className="field"><span>{field.label}</span><textarea aria-label={field.label} required={field.required} value={edit.fields[field.key] || ''} onChange={event => setField(field.key, event.target.value)} /></label> : field.type === 'select' ? <SelectField key={field.key} label={field.label} required={field.required} value={edit.fields[field.key] || ''} onChange={value => setField(field.key, value)}><option value="">Selecione</option>{field.key === 'supplierId' ? tenantRecords.filter(record => record.kind === 'fornecedores' && record.status !== 'Inativo').map(record => <option key={record.id} value={record.id}>{record.title}</option>) : field.key === 'saleId' ? <>{state.sales.filter(sale => sale.tenantId === session.tenantId && sale.customerId === edit.customerId && sale.status === 'Concluída').map(sale => <option key={sale.id} value={sale.id}>Venda {sale.id.slice(0, 8)} · {money(sale.total)}</option>)}{tenantRecords.filter(record => record.kind === 'ordens-servico' && record.customerId === edit.customerId).map(record => <option key={record.id} value={record.id}>{record.title}</option>)}</> : field.options?.map(value => <option key={value}>{value}</option>)}</SelectField> : <TextField key={field.key} label={field.label} type={field.type || 'text'} min={field.type === 'number' ? 0 : undefined} required={field.required} value={edit.fields[field.key] || ''} onChange={value => setField(field.key, value)} />)}
+          onChange={a => setEdit(cur => cur ? { ...cur, fields: { ...cur.fields, ...Object.fromEntries(ADDR.map(k => [`addr_${k}`, a[k]])), [field.key]: Object.keys(addressErrors(a)).length ? cur.fields[field.key] ?? '' : formatAddress(a) } } : cur)}/></div> : field.type === 'textarea' ? <label key={field.key} className="field"><span>{field.label}</span><textarea aria-label={field.label} required={field.required} value={edit.fields[field.key] || ''} onChange={event => setField(field.key, event.target.value)} /></label> : field.type === 'select' ? <SelectField key={field.key} label={field.label} required={field.required} value={edit.fields[field.key] || ''} onChange={value => setField(field.key, value)}><option value="">Selecione</option>{field.key === 'fleetId' ? tenantRecords.filter(record => record.kind === 'frotas' && record.status === 'Ativa').map(record => <option key={record.id} value={record.id}>{record.title}</option>) : field.key === 'supplierId' ? tenantRecords.filter(record => record.kind === 'fornecedores' && record.status !== 'Inativo').map(record => <option key={record.id} value={record.id}>{record.title}</option>) : field.key === 'saleId' ? <>{state.sales.filter(sale => sale.tenantId === session.tenantId && sale.customerId === edit.customerId && sale.status === 'Concluída').map(sale => <option key={sale.id} value={sale.id}>Venda {sale.id.slice(0, 8)} · {money(sale.total)}</option>)}{tenantRecords.filter(record => record.kind === 'ordens-servico' && record.customerId === edit.customerId).map(record => <option key={record.id} value={record.id}>{record.title}</option>)}</> : field.options?.map(value => <option key={value}>{value}</option>)}</SelectField> : <TextField key={field.key} label={field.label} type={field.type || 'text'} min={field.type === 'number' ? 0 : undefined} required={field.required} value={edit.fields[field.key] || ''} onChange={value => setField(field.key, value)} />)}
         {config.amount && !config.items && <label className="field"><span>Valor (R$)</span><input aria-label="Valor (R$)" name="amount" defaultValue={decimal(edit.amount)} required inputMode="decimal" /></label>}
       </div>
       {config.items && <ItemEditor items={edit.items} onChange={items => setEdit(current => current ? { ...current, items } : null)} products={products} cost={kind === 'compras'} />}
@@ -450,6 +452,9 @@ function DomainRecords({ kind }: { kind: string }) {
         <label className="field"><span>Adicionar nota</span><textarea aria-label="Nota de histórico" required value={note} onChange={event => setNote(event.target.value)} /></label>
         <button className="btn primary" disabled={pending}>Salvar nota</button>
       </form>
+      {(kind === 'orcamentos' || kind === 'ordens-servico') && <CustomerLinkButton record={detail} />}
+      {kind === 'frotas' && <CustomerLinkButton record={{ ...detail, customerId: '' }} scope="fleet" label="Link do portal da frota" />}
+      {kind === 'cotacoes' && <QuotePanel record={detail} />}
       {DOC_KINDS.includes(kind) && <button className="btn primary" data-tour={`${kind}-documents`} onClick={() => setDocOpen(true)}><FileText size={16} aria-hidden="true" /> Documentos e impressão</button>}
       {actions(detail)}
     </div>}</Modal>

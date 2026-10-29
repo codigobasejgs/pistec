@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { Session as AuthSession } from '@supabase/supabase-js';
 import { DemoContext, type DemoContextValue, type Remote } from '../store';
@@ -28,6 +28,9 @@ import RealWhatsApp from './WhatsApp';
 import BrandApp from './BrandApp';
 import PrintCenter from '../features/documents/PrintCenter';
 import Hire from '../features/contracts/Hire';
+
+const nextPages = { autopilot: lazy(() => import('../features/next/AutoPilot')), checkin: lazy(() => import('../features/next/CheckIn')), mecanico: lazy(() => import('../features/next/Mechanic')),
+  'estoque-inteligente': lazy(() => import('../features/next/SmartStock')), 'lucro-os': lazy(() => import('../features/next/Profit')), fideliza: lazy(() => import('../features/next/Loyalty')), 'moto-express': lazy(() => import('../features/next/MotoExpress')) };
 
 type Membership = { tenant_id: string; role: Role; branch_ids: string[] | null };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Não foi possível carregar sua conta.';
@@ -158,6 +161,7 @@ function RealRoutes() {
       <Route path="assistente" element={<Assistant/>}/>
       {['configuracoes','minha-assinatura','funcionarios','ajuda','integracoes'].map(path => <Route key={path} path={path} element={<RealSettings key={path}/>}/>)}
       <Route path="whatsapp" element={<RealWhatsApp/>}/>
+      {Object.entries(nextPages).map(([path, Page]) => <Route key={path} path={path} element={<Suspense fallback={<div className="skeleton-page" aria-label="Carregando página"/>}><Page/></Suspense>}/>)}
       <Route path=":module" element={<Records/>}/>
       <Route path="*" element={<main className="page"><h1>Módulo em integração</h1><p>Este módulo ainda não está habilitado no ambiente real. Nenhuma operação foi simulada.</p></main>}/>
     </Route>

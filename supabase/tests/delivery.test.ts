@@ -123,7 +123,8 @@ test('WhatsApp: contato criado, atribuição avisa só o atendente, pausa do bot
 });
 
 test('cobrança: vencimento e fim de teste geram evento uma vez; Super Admin é avisado', async () => {
-  await db.query(`update public.subscriptions set current_period_end=current_date+2 where tenant_id=$1`, [B.tenant]);
+  // Avisos de fim de teste em 7, 3, 1 e 0 dias (política de 1 mês, 03/11/2026).
+  await db.query(`update public.subscriptions set current_period_end=(now() at time zone 'America/Sao_Paulo')::date+3 where tenant_id=$1`, [B.tenant]);
   await service(db, 'select public.run_billing_cycle()');
   await service(db, 'select public.run_billing_cycle()');
   expect((await db.query(`select 1 from public.outbox_events where tenant_id=$1 and type='subscription.trial_ending'`, [B.tenant])).rows).toHaveLength(1);

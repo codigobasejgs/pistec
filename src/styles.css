@@ -714,3 +714,33 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); 
 .contract-toc ol { margin: 6px 0; padding-left: 20px; columns: 2 220px; font-size: .85rem; }
 .hire-agree { align-items: flex-start; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .hire-agree input { margin-top: 3px; flex-shrink: 0; }
+
+/* PISTEC NEXT — AutoPilot, check-in, Moto Express e Portal do Cliente */
+.autopilot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.autopilot-item { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 12px; border: 1px solid var(--border); border-left: 4px solid var(--brand); border-radius: var(--radius-sm); background: var(--elevated); }
+.autopilot-item p { margin: 4px 0 0; }
+.autopilot-item.sev-alta { border-left-color: var(--danger); } .autopilot-item.sev-media { border-left-color: var(--warning); }
+.checkin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.checkin-grid fieldset { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; display: grid; gap: 8px; min-width: 0; }
+.check-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.check-row input { grid-column: 1 / -1; }
+.photo-spots, .express-packages { display: flex; flex-wrap: wrap; gap: 8px; }
+.express-packages .btn { min-height: 56px; min-width: 140px; justify-content: center; }
+.photo-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.photo-list li { display: grid; gap: 4px; font-size: .8rem; }
+.photo-list img, .portal-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); }
+.portal { --text: #0c1a33; min-height: 100vh; max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; align-content: start; background: #eef3fa; color: #0c1a33; color-scheme: light; }
+.portal .muted { color: #52637d; }
+.portal-head { display: flex; align-items: center; gap: 12px; } .portal-head img { max-height: 56px; max-width: 160px; object-fit: contain; } .portal-head h1 { margin: 0; font-size: 1.3rem; }
+.portal-card { background: #fff; border: 1px solid #d9e3f0; border-radius: 14px; padding: 16px; display: grid; gap: 8px; }
+.portal-card h2 { margin: 0; font-size: 1.05rem; }
+.portal .btn { background: #fff; color: #0c1a33; border: 1px solid #c5cfdd; min-height: 44px; }
+.portal .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; } .portal .btn.danger { background: #be123c; border-color: #be123c; color: #fff; }
+.portal input, .portal textarea { background: #fff; color: #0c1a33; border: 1px solid #c5cfdd; }
+.portal-items { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.portal-item { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 10px 0; border-bottom: 1px solid #e5ebf3; }
+.portal-item .toolbar { grid-column: 1 / -1; }
+.portal-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.portal-steps li { padding: 6px 10px; border-radius: 8px; color: #52637d; } .portal-steps li.done { color: #047857; } .portal-steps li.done::before { content: '✓ '; }
+.portal-steps li.current { background: var(--brand); color: #fff; font-weight: 700; }
+.portal-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; } .portal-photos figure { margin: 0; font-size: .8rem; }

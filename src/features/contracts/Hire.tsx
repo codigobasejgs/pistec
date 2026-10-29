@@ -192,7 +192,7 @@ export default function Hire() {
         <dt>Contratada</dt><dd>{catalog.provider.legalName}<br/><small>CNPJ {catalog.provider.document} · marca {catalog.provider.brand}</small></dd>
         <dt>Contratante</dt><dd>{form.company.legalName || '—'}{form.company.document && <><br/><small>{form.company.document}</small></>}</dd>
         <dt>Representante</dt><dd>{form.representative.name || '—'}</dd>
-        <dt>Teste gratuito</dt><dd>{trialLeft ? `${trialLeft} dia(s) restantes; 1ª cobrança no fim do teste` : user ? 'Sem período de teste restante' : `${plan?.trialDays ?? 0} dias para empresas novas`}</dd></dl>
+        <dt>Teste gratuito</dt><dd>{trialLeft ? `${trialLeft} dia(s) restantes; 1ª cobrança no fim do teste` : user ? 'Sem período de teste restante' : '1 mês grátis para empresas novas'}</dd></dl>
       {contract && <p className="muted small">Contrato {contract.number} · {STATUS[contract.status] ?? contract.status}</p>}
       {contract?.documentSha256 && <p className="muted small">SHA-256: <code>{contract.documentSha256.slice(0, 16)}…</code></p>}
       <p className="muted small">Valores e condições confirmados pelo servidor no momento da geração do contrato.</p>
@@ -261,7 +261,7 @@ export default function Hire() {
             <dl><div><dt>Plano</dt><dd>{k.planName}</dd></div><div><dt>Periodicidade</dt><dd>{PERIODS[k.period as Period]}</dd></div><div><dt>Valor</dt><dd>{brl(k.price)}</dd></div>
               {k.discount > 0 && <div><dt>Desconto</dt><dd>{brl(k.discount)}{k.coupon ? ` (cupom ${k.coupon})` : ''}</dd></div>}
               <div><dt>Total do período</dt><dd><strong>{brl(k.total)}</strong></dd></div><div><dt>Início</dt><dd>{day(k.startDate)}</dd></div>
-              <div><dt>Teste gratuito</dt><dd>{k.trialDays ? `${k.trialDays} dias, até ${day(k.trialEnd)}` : 'Não aplicável'}</dd></div><div><dt>Próximo vencimento</dt><dd>{day(k.nextDue)}</dd></div>
+              <div><dt>Teste gratuito</dt><dd>{k.trialDays ? `até ${day(k.trialEnd)} (restante do mês grátis)` : 'Não aplicável'}</dd></div><div><dt>Próximo vencimento</dt><dd>{day(k.nextDue)}</dd></div>
               <div><dt>Limites</dt><dd>{k.entitlements.users} usuários · {k.entitlements.branches} filial(is) · {k.entitlements.products.toLocaleString('pt-BR')} produtos · {k.entitlements.whatsapp} WhatsApp · {k.entitlements.aiMessagesPerDay} consultas IA/dia</dd></div></dl>
             <p className="small">Recursos: {k.entitlements.features.join(' · ')}</p></section>
           <nav className="contract-toc" aria-label="Cláusulas"><details><summary>Ir para a cláusula</summary><ol>{filled.sections.map((s, i) => <li key={s.title}><a href={`#clausula-${i}`} onClick={e => { e.preventDefault(); document.getElementById(`clausula-${i}`)?.scrollIntoView({ block: 'start' }); }}>{s.title}</a></li>)}</ol></details></nav>

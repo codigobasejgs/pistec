@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { trialLabel } from '../../services/trial';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, ChevronRight, Menu, Package, ShieldCheck, Wrench, X, Zap } from 'lucide-react';
 import { useDemo } from '../../store';
@@ -21,18 +22,22 @@ const modules = [
   ['estoque', 'Estoque', 'Movimentações por filial. Saiba o que comprar antes de faltar.'],
   ['ordens-servico', 'Ordens de serviço', 'Acompanhe cada etapa, do diagnóstico à entrega.'],
   ['financeiro', 'Financeiro', 'Receitas, despesas e vencimentos para decidir com clareza.'],
-  ['whatsapp', 'WhatsApp', 'Organize o atendimento. Integração externa demonstrativa.'],
+  ['whatsapp', 'WhatsApp', 'Atendimento pelo WhatsApp da sua loja, com histórico por cliente.'],
   ['relatorios', 'Relatórios', 'Transforme os dados da operação em próximos passos.'],
   ['personalizacao', 'Personalização', 'Sua marca, suas cores, seu jeito de trabalhar.'],
 ] as const;
 
 const faq = [
+  ['Quanto tempo dura o teste grátis?', 'Um mês calendário a partir do cadastro da empresa (ex.: de 29/10 a 29/11). Se o dia não existir no mês seguinte, termina no último dia desse mês. A data exata aparece em Minha assinatura.'],
+  ['Preciso informar cartão?', 'Não. O cadastro e o mês grátis não pedem cartão. Pagamento só depois, ao contratar um plano pela InfinitePay (Pix ou cartão).'],
+  ['O que acontece depois de um mês?', 'Você recebe avisos 7, 3 e 1 dia antes e no último dia. Para continuar, contrate o plano. Sem contratação, o acesso fica somente leitura após 5 dias de tolerância. Seus dados não são apagados.'],
+  ['Posso pedir mais tempo de teste?', 'Sim, fale com o suporte. Prorrogações são concedidas pela equipe PISTEC e ficam registradas.'],
   ['Posso conhecer antes de contratar?', 'Sim. A demonstração usa dados fictícios e permite escolher empresa e perfil, sem senha ou cobrança.'],
-  ['Os dados são reais?', 'Não. Esta versão é um protótipo local com dados armazenados neste navegador (IndexedDB). Não informe dados sensíveis.'],
-  ['Há emissão fiscal ou pagamento real?', 'Não. Cobranças, integrações e notificações são simulações identificadas. Nenhum pagamento é processado.'],
+  ['Os dados ficam onde?', 'Na conta real, em servidor na nuvem (Supabase) com isolamento por empresa. A demonstração é separada: usa dados fictícios salvos só no seu navegador e não envia nada.'],
+  ['Há emissão fiscal ou pagamento real?', 'O PISTEC não emite nota fiscal. A assinatura do plano é cobrada pela InfinitePay (Pix ou cartão) somente após a contratação. Na demonstração nada é cobrado ou enviado.'],
   ['Como funciona a contratação e periodicidade?', 'Os planos têm preços totais por período (mensal, trimestral ou anual com desconto). O total e o equivalente mensal são detalhados antes do cadastro.'],
   ['Minha empresa pode ter filiais e marca própria?', 'Sim. O PISTEC suporta filiais com controle de estoque independente e personalização completa de logo, cores e tema por empresa.'],
-  ['O sistema roda em nuvem?', 'Nesta etapa, o PISTEC opera como demonstração local autônoma. O acesso em nuvem com sincronização remota é um item de roadmap para quando o backend for operacionalizado.'],
+  ['O sistema roda em nuvem?', 'Sim. A conta real funciona no navegador e como aplicativo instalável (PWA), com os dados no servidor. A venda no PDV exige conexão para ser registrada.'],
 ];
 
 function Screenshot({ name, title, hero = false }: { name: string; title: string; hero?: boolean }) {
@@ -51,7 +56,7 @@ function Pricing({ compact = false }: { compact?: boolean }) {
     <div className="pub-section-heading">
       <span className="pub-eyebrow">CRESÇA NO SEU RITMO</span>
       {compact ? <h2>O próximo nível começa<br/>com o plano certo.</h2> : <h1>O próximo nível começa<br/>com o plano certo.</h1>}
-      <p>Valores demonstrativos alinhados ao catálogo da plataforma. Sem cobrança real nesta versão.</p>
+      <p>Experimente grátis por 1 mês. Preços totais por período; a cobrança só começa depois do teste e da contratação.</p>
     </div>
     <div className="pub-periods" aria-label="Periodicidade">
       {Object.entries(periods).map(([key, value]) => <button key={key} aria-pressed={period === key} onClick={() => setPeriod(key as Period)}>{value.label}</button>)}
@@ -64,7 +69,7 @@ function Pricing({ compact = false }: { compact?: boolean }) {
         return <article className={`pub-plan ${i === 1 ? 'pub-plan-featured' : ''}`} key={plan.id}>
           {i === 1 && <span className="pub-plan-flag">MAIS ESCOLHIDO</span>}
           <h3>{plan.name}</h3>
-          <p>{plan.trialDays} dias de teste demonstrativo gratuito</p>
+          <p className="pub-plan-trial">{trialLabel(plan.trialMonths ?? 1)} para empresas novas</p>
           {isEnterprise ? <>
             <div className="pub-price"><small>Sob consulta</small></div>
             <p>A partir de {money(plan.monthly)}/mês · Implantação e limites dedicados sob medida.</p>
@@ -102,10 +107,11 @@ function Pricing({ compact = false }: { compact?: boolean }) {
           <caption>Limites e recursos por plano SaaS</caption>
           <thead><tr><th scope="col">Recurso</th>{state.plans.map(p => <th scope="col" key={p.id}>{p.name}</th>)}</tr></thead>
           <tbody>
-            {(['users', 'branches', 'products', 'whatsapp', 'trialDays'] as const).map((key, index) => <tr key={key}>
-              <th scope="row">{['Usuários', 'Filiais', 'Produtos no catálogo', 'Instâncias WhatsApp', 'Dias de teste'][index]}</th>
+            {(['users', 'branches', 'products', 'whatsapp'] as const).map((key, index) => <tr key={key}>
+              <th scope="row">{['Usuários', 'Filiais', 'Produtos no catálogo', 'Instâncias WhatsApp'][index]}</th>
               {state.plans.map(p => <td key={p.id}>{key === 'products' ? p[key].toLocaleString('pt-BR') : p[key]}</td>)}
             </tr>)}
+            <tr><th scope="row">Teste grátis</th>{state.plans.map(p => <td key={p.id}>{trialLabel(p.trialMonths ?? 1)}</td>)}</tr>
             {Array.from(new Set(state.plans.flatMap(p => p.features))).map(feature => <tr key={feature}>
               <th scope="row">{feature}</th>
               {state.plans.map(p => <td key={p.id}>{p.features.includes(feature) ? 'Incluído' : '—'}</td>)}
@@ -124,36 +130,33 @@ function FAQ() {
   </section>;
 }
 
-function LeadForm({ recovery = false }: { recovery?: boolean }) {
-  const { mutate } = useDemo(); const action = useAction(); const [sent, setSent] = useState(false);
+/** Contato comercial: enviado ao servidor (submit_lead → Super Admin). Recuperação de acesso real é feita em /app/recuperar. */
+function LeadForm() {
+  const action = useAction(); const [sent, setSent] = useState(false);
   const [phone, setPhone] = useState('');
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget);
     void action.run(async () => {
       const contact = email(String(form.get('email') ?? ''));
       if (form.get('consent') !== 'on') throw new Error('Confirme o aviso de privacidade.');
-      const name = recovery ? 'Solicitação de acesso demonstrativa' : required(String(form.get('name') ?? ''), 'Nome');
+      const name = required(String(form.get('name') ?? ''), 'Nome');
       const message = String(form.get('message') ?? '').trim();
       if (message.length > 2000) throw new Error('Mensagem limitada a 2000 caracteres.');
-      const digits = phoneDigits(phone);
-      await mutate(draft => {
-        draft.records.push(platformRecord(uid(), recovery ? 'admin-recuperacao' : 'admin-lead', name, { email: contact, phone: digits, company: String(form.get('company') ?? ''), message, consent: new Date().toISOString(), source: window.location.pathname }));
-      });
+      const { supabase } = await import('../../real/client');
+      const { error } = await supabase.rpc('submit_lead', { p: { name, email: contact, phone: phoneDigits(phone), company: String(form.get('company') ?? ''), message } });
+      if (error) throw new Error(error.message.includes('Muitas') ? error.message : 'Não foi possível enviar agora. Tente novamente ou escreva para pistec.gestao@gmail.com.');
       setSent(true);
-    }, recovery ? 'Solicitação registrada localmente. Nenhum e-mail foi enviado.' : 'Interesse registrado nesta demonstração. Nenhuma mensagem externa foi enviada.');
+    }, 'Mensagem enviada à equipe PISTEC.');
   }
-  if (sent) return <div className="pub-success" role="status"><ShieldCheck size={40}/><h2>{recovery ? 'Solicitação registrada' : 'Vamos dar o próximo passo.'}</h2><p>Registro salvo apenas neste navegador. Este protótipo não envia e-mails ou mensagens externas.</p><Link className="pub-button" to="/demonstracao">Acessar demonstração<ArrowRight size={18}/></Link></div>;
+  if (sent) return <div className="pub-success" role="status"><ShieldCheck size={40}/><h2>Vamos dar o próximo passo.</h2><p>Recebemos sua mensagem. A equipe PISTEC responde pelo e-mail ou telefone informado.</p><Link className="pub-button" to="/demonstracao">Acessar demonstração<ArrowRight size={18}/></Link></div>;
   return <form className="pub-form" onSubmit={submit}>
-    <p className="pub-callout">Ambiente demonstrativo. Seus dados ficam salvos apenas neste dispositivo.</p>
-    {!recovery && <><Field label="Seu nome"><input name="name" required maxLength={120} autoComplete="name"/></Field><Field label="Empresa"><input name="company" maxLength={160} autoComplete="organization"/></Field></>}
+    <Field label="Seu nome"><input name="name" required maxLength={120} autoComplete="name"/></Field><Field label="Empresa"><input name="company" maxLength={160} autoComplete="organization"/></Field>
     <Field label="E-mail"><input name="email" type="email" required maxLength={254} autoComplete="email"/></Field>
-    {!recovery && <>
-      <Field label="Telefone com DDD (opcional)" hint="Formato: (00) 00000-0000"><input name="phone" type="tel" maxLength={16} value={phone} onChange={e => setPhone(maskPhone(e.target.value))} autoComplete="tel"/></Field>
-      <Field label="Como podemos ajudar sua operação?"><textarea name="message" rows={4} maxLength={2000}/></Field>
-    </>}
-    <label className="pub-check"><input name="consent" type="checkbox" required/><span>Li a <Link to="/privacidade">política de privacidade</Link> e entendo que o registro é local.</span></label>
+    <Field label="Telefone com DDD (opcional)" hint="Formato: (00) 00000-0000"><input name="phone" type="tel" maxLength={16} value={phone} onChange={e => setPhone(maskPhone(e.target.value))} autoComplete="tel"/></Field>
+    <Field label="Como podemos ajudar sua operação?"><textarea name="message" rows={4} maxLength={2000}/></Field>
+    <label className="pub-check"><input name="consent" type="checkbox" required/><span>Li a <Link to="/privacidade">política de privacidade</Link> e autorizo o contato da equipe PISTEC.</span></label>
     {action.error && <p role="alert" className="pub-error">{action.error}</p>}
-    <button className="pub-button" disabled={action.pending}>{action.pending ? 'Salvando…' : recovery ? 'Registrar solicitação simulada' : 'Registrar meu interesse'}<ArrowRight size={18}/></button>
+    <button className="pub-button" disabled={action.pending}>{action.pending ? 'Enviando…' : 'Enviar mensagem'}<ArrowRight size={18}/></button>
   </form>;
 }
 
@@ -184,7 +187,7 @@ function DemoChooser() {
       <button className="pub-button" disabled={action.pending || !selectedId} onClick={() => enter()}>Explorar empresa<ArrowRight size={18}/></button>
       <div className="pub-divider"/>
       {action.error && <p role="alert" className="pub-error">{action.error}</p>}
-      <Link to="/recuperar-acesso">Recuperar acesso</Link>
+      <a href="/app/recuperar">Esqueci a senha da conta real</a>
       <Link to="/cadastro">Criar uma empresa demonstrativa</Link>
       <a href="/app/login">Entrar em uma conta real</a>
     </div>
@@ -282,7 +285,7 @@ function Onboarding() {
       {step === 3 && <>
         <Field label="Plano" error={errors.planId}><select required value={plan?.id || ''} onChange={event => change('planId', event.target.value)}>{!plan && <option value="">Sem planos disponíveis</option>}{state.plans.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
         <Field label="Periodicidade"><select value={data.period} onChange={event => change('period', event.target.value)}>{Object.entries(periods).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select></Field>
-        {plan && <p className="pub-callout">{money(planPrice(plan, data.period).total)} / período ({periods[data.period].label.toLowerCase()}) · {plan.trialDays} dias de teste demonstrativo sem cobrança.</p>}
+        {plan && <p className="pub-callout">{money(planPrice(plan, data.period).total)} / período ({periods[data.period].label.toLowerCase()}) · {trialLabel(plan.trialMonths ?? 1)} (demonstração, sem cobrança).</p>}
       </>}
       {step === 4 && <>
         <div className="form-grid">{([['primary', 'Cor principal'], ['secondary', 'Cor secundária'], ['accent', 'Destaque']] as const).map(([key, label]) => <Field key={key} label={label}><input type="color" value={data[key]} onChange={event => change(key, event.target.value)}/></Field>)}</div>
@@ -312,20 +315,20 @@ function Onboarding() {
 function Legal({ privacy }: { privacy: boolean }) {
   return <section className="pub-section pub-legal">
     <span className="pub-eyebrow">TRANSPARÊNCIA E RESPONSABILIDADE</span>
-    <h1>{privacy ? 'Privacidade na demonstração' : 'Termos da demonstração'}</h1>
-    <p>Versão demo-1 · {date(today())}. Este documento descreve o funcionamento do protótipo e não substitui os contratos de uma contratação corporativa real.</p>
+    <h1>{privacy ? 'Privacidade' : 'Termos de uso'}</h1>
+    <p>Atualizado em {date(today())}. A contratação do PISTEC é regida pelo contrato aceito e assinado eletronicamente na escolha do plano; este resumo não o substitui.</p>
     {(privacy ? [
-      ['Armazenamento local no navegador', 'Todos os cadastros, faturas e movimentações ficam armazenados no IndexedDB deste navegador. Nenhum registro é enviado a servidores remotos nesta versão.'],
-      ['Dados demonstrativos e fictícios', 'Utilize nomes, documentos e telefones fictícios. Não cadastre senhas reais, cartões de crédito ou dados protegidos.'],
-      ['Exclusão total dos dados', 'Você pode redefinir o estado a qualquer momento pela tela de demonstração ou limpando os dados do site nas configurações do navegador.'],
-      ['Simulação de serviços externos', 'Consultas de CEP, notificações de WhatsApp, emissão fiscal e conectores de cobrança são simulações sem transações reais.'],
+      ['Conta real', 'Os dados da empresa ficam em servidor na nuvem (Supabase), isolados por empresa e por permissão de cada usuário. A equipe PISTEC não acessa o conteúdo operacional das oficinas sem necessidade de suporte.'],
+      ['Serviços utilizados', 'Hospedagem (Vercel), banco e autenticação (Supabase), e-mail (Resend), WhatsApp (Evolution API, quando a loja conecta o próprio número), IA (Google Gemini, quando habilitada, com dados mínimos), cobrança da assinatura (InfinitePay) e assinatura de contrato (Autentique).'],
+      ['Clientes das oficinas', 'Mensagens só são enviadas a clientes que autorizaram o contato. Links de orçamento e acompanhamento têm validade e podem ser revogados pela oficina.'],
+      ['Demonstração', 'A demonstração usa dados fictícios salvos apenas no seu navegador e não envia mensagens, e-mails ou cobranças. Não informe dados reais nela.'],
     ] : [
-      ['Finalidade da plataforma', 'O PISTEC é um protótipo navegável para validação de fluxos operacionais, cadastros, filiais e governança multiempresa.'],
-      ['Sem cobranças reais', 'Os planos SaaS e faturas simuladas (Asaas/InfinitePay) têm propósito estritamente demonstrativo e não geram obrigações financeiras.'],
-      ['Isolamento multiempresa e marca branca', 'Cada empresa opera com identidade visual própria e filiais isoladas. Na futura versão em nuvem, o isolamento será garantido por banco relacional com chaves segregadas.'],
-      ['Disponibilidade e roadmap', 'Recursos como sincronização em nuvem e mensageria externa estão no roadmap de implantação da infraestrutura de backend.'],
+      ['Finalidade', 'Sistema de gestão para oficinas, motopeças e autopeças: PDV, estoque, ordens de serviço, financeiro e relacionamento, com acesso por perfil.'],
+      ['Teste e cobrança', 'Novas empresas têm 1 mês grátis, sem cartão. Depois, a assinatura é cobrada pela InfinitePay conforme o plano e a periodicidade contratados.'],
+      ['Responsabilidade fiscal', 'O PISTEC não emite nota fiscal; recibos e documentos gerados não têm validade fiscal.'],
+      ['Demonstração', 'A demonstração é isolada da conta real e tem fins de avaliação; operações nela não têm efeito externo.'],
     ]).map(([title, text]) => <article key={title}><h2>{title}</h2><p>{text}</p></article>)}
-    <Link to="/contato" className="pub-button pub-button-outline">Falar sobre o projeto</Link>
+    <Link to="/contato" className="pub-button pub-button-outline">Falar com a equipe</Link>
   </section>;
 }
 
@@ -338,8 +341,9 @@ function Marketing({ path }: { path: string }) {
         <span className="pub-eyebrow"><span className="pub-status-dot"/> GESTÃO AUTOMOTIVA INTEGRADA</span>
         <h1>{segment ? <>Sua {segment},<br/>um passo <em>à frente.</em></> : <>Menos improviso.<br/>Mais controle.<br/><em>Seu negócio à frente.</em></>}</h1>
         <p>Vendas no balcão, controle de filiais, ordens de serviço, peças e financeiro. Plataforma com sua própria marca visual e visão completa do faturamento.</p>
+        <p className="pub-trial-offer"><strong>Experimente o PISTEC grátis por 1 mês.</strong> Conheça os recursos do seu plano e descubra como simplificar a gestão da sua oficina ou loja. Sem cartão de crédito no cadastro.</p>
         <div className="pub-actions">
-          <Link className="pub-button" to="/cadastro">Testar grátis por 14 dias<ArrowRight size={18}/></Link>
+          <Link className="pub-button" to="/planos">Começar meu mês grátis<ArrowRight size={18}/></Link>
           <Link className="pub-button pub-button-outline" to="/demonstracao">Ver demonstração</Link>
           <Link className="pub-button pub-button-outline" to="/planos">Conhecer planos</Link>
         </div>
@@ -441,7 +445,7 @@ function Marketing({ path }: { path: string }) {
       <span className="pub-eyebrow">COMECE HOJE MESMO</span>
       <h2>Mais tempo para acelerar seu negócio.<br/>Menos tempo perdido com controles manuais.</h2>
       <div className="pub-actions" style={{ justifyContent: 'center' }}>
-        <Link className="pub-button" to="/cadastro">Começar teste gratuito<ArrowRight size={18}/></Link>
+        <Link className="pub-button" to="/planos">Começar meu mês grátis<ArrowRight size={18}/></Link>
         <Link className="pub-button pub-button-outline" to="/demonstracao">Abrir demonstração</Link>
       </div>
     </section>
@@ -460,14 +464,15 @@ export default function Public() {
   if (['/login', '/demonstracao'].includes(path)) content = <DemoChooser/>;
   else if (path === '/cadastro') content = <Onboarding/>;
   else if (path === '/planos') content = <><Pricing/><FAQ/></>;
-  else if (path === '/contato' || path === '/recuperar-acesso') content = <section className="pub-section pub-split">
+  else if (path === '/recuperar-acesso') content = <Navigate to="/contato" replace/>;
+  else if (path === '/contato') content = <section className="pub-section pub-split">
     <div>
       <span className="pub-eyebrow">ATENDIMENTO COMERCIAL</span>
-      <h1>{path === '/contato' ? <>O próximo capítulo<br/>da sua gestão.</> : 'Recuperar acesso'}</h1>
-      <p>{path === '/contato' ? 'Conte-nos sobre sua operação e objetivos. Os dados ficam registrados localmente nesta demonstração.' : 'Não há senhas na demonstração local. Você pode entrar diretamente pelo seletor de perfis ou registrar um pedido local.'}</p>
+      <h1>O próximo capítulo<br/>da sua gestão.</h1>
+      <p>Conte-nos sobre sua operação e objetivos. A mensagem chega à equipe PISTEC.</p>
       <Link to="/demonstracao" className="pub-button pub-button-outline">Abrir demonstração<ChevronRight size={16}/></Link>
     </div>
-    <LeadForm recovery={path === '/recuperar-acesso'}/>
+    <LeadForm/>
   </section>;
   else if (path === '/termos' || path === '/privacidade') content = <Legal privacy={path === '/privacidade'}/>;
   else if (path === '/contrato') content = <Navigate to="/planos" replace/>;

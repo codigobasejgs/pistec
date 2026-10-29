@@ -1,5 +1,5 @@
 import { HttpError, serve, service } from '../_shared/http.ts';
-import { parseConnection, parseInbound } from '../_shared/evolution.ts';
+import { parseConnection, parseInbound, parseStatus } from '../_shared/evolution.ts';
 
 // Evolution 2.3.7 não assina webhooks: cada instância tem token próprio na URL (?i=<instância>&t=<token>), guardado só em hash.
 // O nome da instância vem da URL configurada por nós, nunca do corpo do evento.
@@ -18,6 +18,10 @@ serve(async request => {
   try { event = JSON.parse(raw); } catch { throw new HttpError(400, 'JSON inválido.'); }
   const state = parseConnection(event);
   if (state) { await db.rpc('whatsapp_connection', { p_instance: instance, p_state: state }); return { state }; }
+  const delivery = parseStatus(event);
+  if (delivery) { const { data } = await db.rpc('whatsapp_message_status', { p_instance: instance, p_external_id: delivery.externalId, p_status: delivery.status }); return { status: data }; }
+  // QRCODE_UPDATED: o QR não é persistido; a tela consulta "connect"/"state". Só marca a instância como aguardando leitura.
+  if (String(event.event ?? '').toLowerCase().replace('_', '.') === 'qrcode.updated') { await db.rpc('whatsapp_connection', { p_instance: instance, p_state: 'connecting' }); return { qr: true }; }
   const msg = parseInbound(event);
   if (!msg) return { ignored: true };
   // Dedup por (instância, id externo) no banco: reenvio do mesmo evento não duplica mensagem nem notificação.

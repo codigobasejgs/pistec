@@ -29,7 +29,7 @@ export function variables(c: ContractData): Record<string, string> {
     plano_nome: k.planName, plano_id: k.planId, plano_versao: k.planVersion.slice(0, 12), periodicidade: PERIOD[k.period] ?? k.period,
     valor_plano: brl(k.price), preco_base: brl(k.price), desconto_cupom_se_houver: k.discount ? `Desconto ${brl(k.discount)}${k.coupon ? ` (cupom ${k.coupon})` : ''}` : 'Sem desconto',
     cupom_aplicado: k.coupon ? `${k.coupon} (${brl(k.discount)})` : 'nenhum', valor_total_contratado: `${brl(k.total)} por período ${(PERIOD[k.period] ?? k.period).toLowerCase()}`,
-    dias_teste: k.trialDays ? `${k.trialDays} dias` : 'Sem período de teste nesta contratação', data_inicio_teste: k.trialDays ? day(k.startDate) : '—', data_fim_teste: k.trialDays ? day(k.trialEnd) : '—',
+    dias_teste: k.trialDays ? `período restante do teste gratuito de 1 mês calendário (${k.trialDays} dia(s), até ${day(k.trialEnd)})` : 'Sem período de teste nesta contratação', data_inicio_teste: k.trialDays ? day(k.startDate) : '—', data_fim_teste: k.trialDays ? day(k.trialEnd) : '—',
     condicoes_teste: k.trialDays ? `sem cobrança até ${day(k.trialEnd)}; a primeira cobrança vence nessa data e só é efetuada com pagamento confirmado pelo CONTRATANTE` : 'não aplicável',
     meio_cobranca: k.billingMethod, data_proximo_vencimento: day(k.nextDue), data_inicio: day(k.startDate), regra_renovacao: k.renewal, regra_cancelamento: k.cancellation, regra_reajuste: k.readjustment,
     prazo_tolerancia: k.grace, procedimento_notificacao: k.notification, condicoes_suporte_sla: k.support, prazo_exportacao: k.exportDays, formatos_exportacao: k.exportFormats, politica_retencao_versao: k.retention,

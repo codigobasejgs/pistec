@@ -1,0 +1,24 @@
+[
+  {
+    "type": "MX",
+    "name": "pistec.com.br",
+    "content": ".",
+    "proxied": false,
+    "ttl": 1,
+    "priority": 0
+  },
+  {
+    "type": "TXT",
+    "name": "_dmarc.pistec.com.br",
+    "content": "\"v=DMARC1; p=reject;\"",
+    "proxied": false,
+    "ttl": 1
+  },
+  {
+    "type": "TXT",
+    "name": "pistec.com.br",
+    "content": "\"v=spf1 -all\"",
+    "proxied": false,
+    "ttl": 1
+  }
+]

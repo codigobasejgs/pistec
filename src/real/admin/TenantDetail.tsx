@@ -13,7 +13,7 @@ import { ConfirmAction, KeyValue, Loaded, StatusBadge, Tabs, Timeline } from './
 
 type Detail = {
   tenant: { id: string; name: string; legal_name: string; document: string; owner_name: string; email: string; phone: string; whatsapp: string; address: string; address_data?: unknown; website: string; profile: string;
-    plan_id: string; status: string; due_date: string; created_at: string; notes: string; logo: string | null; slug: string };
+    plan_id: string; status: string; due_date: string; trial_started_at: string | null; created_at: string; notes: string; logo: string | null; slug: string };
   subscription: { plan_id: string; period: string; status: string; current_period_end: string; provider: string; cancel_at_period_end: boolean; updated_at: string } | null;
   plan: { name: string; monthly: number; quarterly: number; annual: number; users: number; branches: number; products: number; whatsapp: number; ai_messages: number; features: string[]; modules: string[] } | null;
   usage: Record<'users' | 'branches' | 'products' | 'customers' | 'sales30' | 'whatsapp' | 'ai30' | 'emails30' | 'pushDevices', number>;
@@ -35,7 +35,7 @@ export default function TenantDetail() {
   const tab = (params.get('aba') as Tab) || 'geral';
   const q = useQuery(() => call<Detail>('admin_tenant_detail', { p_tenant: id }), [id]);
   const plans = useQuery(() => rows<PlanRow>('plans', 'id,name,active,users,branches,products,whatsapp', b => b.order('sort')), []);
-  const [action, setAction] = useState<Action>(null), [days, setDays] = useState(15), [planId, setPlanId] = useState(''), [status, setStatus] = useState('');
+  const [action, setAction] = useState<Action>(null), [days, setDays] = useState(15), [until, setUntil] = useState(''), [planId, setPlanId] = useState(''), [status, setStatus] = useState('');
   const run = async (fn: string, args: Record<string, unknown>, ok: string) => { await call(fn, args); setStatus(ok); q.reload(); };
 
   return <div className="page"><Link to="/admin/empresas" className="btn ghost"><ArrowLeft size={16}/>Empresas</Link>
@@ -70,7 +70,7 @@ export default function TenantDetail() {
       {tab === 'cadastro' && <Panel title="Dados cadastrais"><KeyValue items={[['Nome fantasia', t.name], ['Razão social', t.legal_name], ['CNPJ', t.document], ['Responsável', t.owner_name], ['E-mail', t.email], ['Telefone', t.phone], ['WhatsApp', t.whatsapp], ['Endereço', t.address], ['Site', t.website], ['Segmento', t.profile], ['Endereço no sistema', `/loja/${t.slug}`], ['Cadastro', date(t.created_at)]]}/></Panel>}
       {tab === 'assinatura' && <div className="grid grid-2"><Panel title="Plano contratado"><KeyValue items={[['Plano', d.plan?.name], ['Mensal', d.plan ? money(d.plan.monthly) : '—'], ['Trimestral', d.plan ? money(d.plan.quarterly) : '—'], ['Anual', d.plan ? money(d.plan.annual) : '—'], ['IA por dia', d.plan?.ai_messages], ['Módulos', d.plan?.modules.includes('*') ? 'Todos' : d.plan?.modules.join(', ')]]}/>
         {d.plan?.features.length ? <ul>{d.plan.features.map(f => <li key={f}>{f}</li>)}</ul> : null}</Panel>
-        <Panel title="Ciclo de vida"><KeyValue items={[['Situação', s ? subscriptionStatus[s.status] : '—'], ['Gateway', s?.provider], ['Fim do período atual', date(s?.current_period_end)], ['Última alteração', date(s?.updated_at)]]}/>
+        <Panel title="Ciclo de vida"><KeyValue items={[['Situação', s ? subscriptionStatus[s.status] : '—'], ...(s?.status === 'trialing' ? [['Teste iniciado em', date(t.trial_started_at ?? t.created_at)], ['Teste termina em', `${date(s.current_period_end)} (${daysUntil(s.current_period_end)} dia(s))`]] as [string, string][] : []), ['Gateway', s?.provider], ['Fim do período atual', date(s?.current_period_end)], ['Última alteração', date(s?.updated_at)]]}/>
           <p className="muted small">Alterar o preço de um plano não muda faturas já emitidas: cada fatura guarda o valor no momento da emissão.</p></Panel></div>}
       {tab === 'contratos' && <TenantContracts tenant={t.id}/>}
       {tab === 'cobrancas' && d.invoices && <Panel title="Faturas da assinatura">{d.invoices.length ? <div className="table-wrap"><table className="responsive-table"><thead><tr><th>Fatura</th><th>Plano</th><th>Valor</th><th>Vencimento</th><th>Situação</th><th>Pagamento</th></tr></thead><tbody>
@@ -86,9 +86,9 @@ export default function TenantDetail() {
       {tab === 'auditoria' && d.audit && <Panel title="Histórico administrativo"><ol className="timeline">{d.audit.map((a, n) => <li key={n}><time>{new Date(a.at).toLocaleString('pt-BR')}</time><p>{a.action}</p>
         <small>{a.by ?? 'sistema'}{a.data?.reason ? ` · Motivo: ${a.data.reason}` : ''}{a.data?.before !== undefined ? ` · Antes: ${JSON.stringify(a.data.before)} → Depois: ${JSON.stringify(a.data.after)}` : ''}</small></li>)}</ol>{!d.audit.length && <p className="muted">Sem registros.</p>}</Panel>}
 
-      <ConfirmAction open={action === 'extend'} title="Prorrogar período de teste" confirmLabel="Prorrogar" onClose={() => setAction(null)} onConfirm={r => run('admin_extend_trial', { p_tenant: t.id, p_days: days, p_reason: r }, `Teste prorrogado em ${days} dias.`)}
-        description={<KeyValue items={[['Término atual', date(s?.current_period_end)], ['Novo término', newEnd ? newEnd.toLocaleDateString('pt-BR') : '—']]}/>}>
-        <Field label="Dias adicionais (1 a 90)"><input type="number" min={1} max={90} value={days} onChange={e => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}/></Field></ConfirmAction>
+      <ConfirmAction open={action === 'extend'} title="Prorrogar período de teste" confirmLabel="Prorrogar" onClose={() => setAction(null)} onConfirm={r => run('admin_extend_trial_until', { p_tenant: t.id, p_until: until || newEnd?.toISOString().slice(0, 10), p_reason: r }, 'Teste prorrogado.')}
+        description={<KeyValue items={[['Teste iniciado em', date(t.trial_started_at ?? t.created_at)], ['Término atual', date(s?.current_period_end)], ['Novo término', until ? date(until) : newEnd ? newEnd.toLocaleDateString('pt-BR') : '—']]}/>}>
+        <Field label="Nova data de término" hint="Até 120 dias a partir de hoje. A justificativa fica na auditoria."><input type="date" value={until || (newEnd ? newEnd.toISOString().slice(0, 10) : '')} onChange={e => setUntil(e.target.value)}/></Field></ConfirmAction>
       <ConfirmAction open={action === 'plan'} title="Alterar plano" confirmLabel="Alterar plano" onClose={() => setAction(null)} onConfirm={r => run('admin_change_plan', { p_tenant: t.id, p_plan: planId, p_reason: r }, 'Plano alterado.')}
         description={<p>O servidor confere se o uso atual cabe nos limites do novo plano. Nada é apagado. A próxima fatura usa o preço do novo plano; faturas emitidas não mudam.</p>}>
         <Field label="Novo plano"><select value={planId} onChange={e => setPlanId(e.target.value)}>{plans.data?.map(p => <option key={p.id} value={p.id}>{p.name}{p.active ? '' : ' (inativo)'} · {p.users} usuários · {p.branches} filiais · {p.products} produtos</option>)}</select></Field></ConfirmAction>

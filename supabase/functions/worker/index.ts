@@ -1,4 +1,6 @@
-import { env, HttpError, serve, service } from '../_shared/http.ts';
+import { env, HttpError, providerJson, serve, service } from '../_shared/http.ts';
+import * as evo from '../_shared/evolution.ts';
+import { BOT_PROMPT, botReply } from '../_shared/bot.ts';
 import { sendPush } from '../_shared/webpush.ts';
 import { displayFrom, permanent, render } from '../_shared/email.ts';
 import { reconcile } from '../_shared/contracts/reconcile.ts';
@@ -15,8 +17,39 @@ serve(async request => {
   result.push = await push(db).catch(e => ({ error: e instanceof Error ? e.message : 'push_failed' }));
   result.email = await email(db).catch(e => ({ error: e instanceof Error ? e.message : 'email_failed' }));
   result.contracts = await contracts(db).catch(e => ({ error: e instanceof Error ? e.message : 'contracts_failed' }));
+  result.bot = await bot(db).catch(e => ({ error: e instanceof Error ? e.message : 'bot_failed' }));
   return result;
 });
+
+// Chatbot: uma resposta por mensagem recebida (reserva idempotente no banco), só com bot ligado, instância aberta e conversa sem atendente humano.
+async function bot(db: ReturnType<typeof service>) {
+  if (Deno.env.get('AI_ENABLED') !== 'true' || !Deno.env.get('GEMINI_API_KEY')) return { skipped: 'ai_disabled' };
+  const { data: ids, error } = await db.rpc('svc_bot_pending', { p_limit: 10 });
+  if (error) throw new Error('svc_bot_pending indisponível');
+  const counts: Record<string, number> = {};
+  for (const id of (ids ?? []) as string[]) {
+    const { data: ctx } = await db.rpc('svc_bot_claim', { p_message: id });
+    if (!ctx || ctx.skip) { counts[ctx?.skip ?? 'skip'] = (counts[ctx?.skip ?? 'skip'] ?? 0) + 1; continue; }
+    let providerId: string | null = null, failure: string | null = null, tokens = { in: 0, out: 0 };
+    try {
+      const r = await providerJson('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env('GEMINI_API_KEY') },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: BOT_PROMPT(ctx.store, ctx.persona, ctx.knowledge) }] },
+          contents: (ctx.history as { role: string; text: string }[]).map(h => ({ role: h.role, parts: [{ text: h.text }] })), generationConfig: { maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } } }),
+      });
+      tokens = { in: Number(r.usageMetadata?.promptTokenCount ?? 0), out: Number(r.usageMetadata?.candidatesTokenCount ?? 0) };
+      const text = botReply(r.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join(''));
+      const sent = await evo.sendText(ctx.instance, evo.recipient(ctx.remote), text);
+      providerId = String(sent?.key?.id ?? '') || null;
+      if (!providerId) failure = 'sem_confirmacao';
+      else await db.rpc('whatsapp_inbound', { p_instance: ctx.instance, p_external_id: providerId, p_remote: ctx.remote, p_body: text, p_from_me: true, p_status: 'sent' });
+    } catch (e) { failure = e instanceof Error ? e.message.slice(0, 120) : 'falha'; }
+    await db.from('ai_usage').update({ model: 'gemini-2.5-flash', input_tokens: tokens.in, output_tokens: tokens.out, tools: ['whatsapp_bot'], blocked: failure ? 'provider_error' : null }).eq('id', ctx.quota);
+    await db.rpc('svc_bot_finish', { p_message: id, p_provider_id: providerId, p_error: failure });
+    counts[failure ? 'failed' : 'sent'] = (counts[failure ? 'failed' : 'sent'] ?? 0) + 1;
+  }
+  return counts;
+}
 
 async function outbox(db: ReturnType<typeof service>) {
   const { data: events, error } = await db.rpc('claim_outbox',{p_limit:25});

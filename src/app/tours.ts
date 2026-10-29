@@ -112,8 +112,32 @@ export const tours: Record<string, TourStep[]> = {
     { target: 'sub-plan', title: 'Seu plano PISTEC', text: 'Plano, situação e vencimento da assinatura SaaS da plataforma.', route: 'minha-assinatura' },
     { target: 'sub-usage', title: 'Uso dos limites', text: 'Usuários, filiais, produtos e instâncias WhatsApp versus os limites contratados.', route: 'minha-assinatura' },
     { target: 'sub-change', title: 'Simulação de mudança', text: 'Simule upgrade e downgrade; limites menores que o uso atual bloqueiam a troca.', route: 'minha-assinatura' },
+    { target: 'sub-plan', title: 'Teste gratuito', text: 'Seu teste gratuito dura 1 mês. A data exata de encerramento está em Minha assinatura.', route: 'minha-assinatura' },
     { target: 'sub-invoices', title: 'Faturas SaaS', text: 'Faturas simuladas via Asaas e InfinitePay. Nenhum pagamento real é cobrado.', route: 'minha-assinatura' },
   ],
+  autopilot: [
+    { target: 'autopilot-kpis', title: 'Pendências da filial', text: 'Contagem por gravidade, calculada agora a partir de OS, orçamentos, compras, agenda, estoque e garantias.', route: 'autopilot' },
+    { target: 'autopilot-list', title: 'Cada alerta tem uma ação', text: 'Abra o registro, cote peças ou dispense por 7 dias. O AutoPilot não envia, não compra e não altera valores sozinho.', route: 'autopilot' },
+    { target: 'autopilot-config', title: 'Regras da empresa', text: 'Prazos e meta de margem são configurados aqui, sem números fixos no sistema.', route: 'autopilot' },
+  ],
+  checkin: [
+    { target: 'checkin-vehicle', title: '1. Cliente, veículo e placa', text: 'Selecione o veículo do cliente e confirme a placa. Quilometragem, combustível, técnico e previsão ficam na OS.', route: 'checkin' },
+    { target: 'checkin-checklist', title: '2. Checklist', text: 'Conforme, Atenção, Não conforme ou Não avaliado, com observação nos itens com problema.', route: 'checkin' },
+    { target: 'checkin-photos', title: '3. Fotos', text: 'Fotografe frente, traseira, laterais, painel e avarias. Marque quais o cliente verá no portal. Atendimento rápido dispensa fotos.', route: 'checkin' },
+    { target: 'checkin-submit', title: '4. Registrar entrada', text: 'Cria a ordem de serviço com o check-in no histórico (data, hora e funcionário).', route: 'checkin' },
+  ],
+  mecanico: [
+    { target: 'mech-os', title: 'Escolha a OS', text: 'OS abertas da filial. As etapas (execução, testes, pronta) ficam no topo do painel.', route: 'mecanico' },
+    { target: 'mech-timer', title: 'Tempo trabalhado', text: 'Inicie e pare o cronômetro; as horas alimentam o Lucro por OS.', route: 'mecanico' },
+    { target: 'mech-voice', title: 'Fale o que foi feito', text: 'A IA transcreve e organiza. Nada é gravado sem você revisar e tocar em Registrar na OS.', route: 'mecanico' },
+  ],
+  'estoque-inteligente': [
+    { target: 'stock-kpis', title: 'Visão do estoque', text: 'Reposição, rupturas, itens sem giro e valor a custo da filial ativa.', route: 'estoque-inteligente' },
+    { target: 'stock-quote', title: 'Da sugestão à cotação', text: 'Revise as quantidades e gere uma cotação. A compra só é criada quando você aprovar uma proposta.', route: 'estoque-inteligente' },
+  ],
+  'lucro-os': [{ target: 'profit-kpis', title: 'Margem de contribuição', text: 'Receita menos custos diretos das OS prontas e entregues. Não é lucro líquido.', route: 'lucro-os' }],
+  fideliza: [{ target: 'loyalty-kpis', title: 'Revisões previstas', text: 'Vêm da recomendação registrada na OS. Lembre pelo WhatsApp (só com consentimento) ou agende direto.', route: 'fideliza' }],
+  'moto-express': [{ target: 'express-form', title: 'Atendimento rápido', text: 'Cliente, moto, quilometragem e pacote cadastrado. Gera uma OS normal com reserva e baixa de peças.', route: 'moto-express' }],
 };
 
 /** Identifica o tour correspondente ao caminho da URL. */

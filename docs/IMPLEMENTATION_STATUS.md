@@ -1,5 +1,44 @@
 # Status de Implementação PISTEC
 
+## PISTEC NEXT 11.0 — produção (29/10/2026)
+
+Auditoria real e correções locais; nada publicado. Ver `docs/PRODUCTION_READINESS.md` (runtime de cada integração e estado observado), `docs/PISTEC_NEXT_PRODUCTION_MATRIX.md` (25 linhas classificadas), `docs/PISTEC_NEXT_E2E_REPORT.md` (67/67 E2E), `docs/PISTEC_NEXT_ROLLBACK.md` e os relatórios por serviço.
+Bloqueios: pareamento WhatsApp (número de teste), `RESEND_WEBHOOK_SECRET`, autorização para aplicar migrations/publicar.
+
+## PISTEC NEXT 10.0 (29/10/2026) — local, não publicado
+
+12 diferenciais sobre o ERP existente (mesmas tabelas, RPCs e permissões). Matriz completa em `docs/PISTEC_NEXT_ARCHITECTURE.md`; segurança em `docs/PISTEC_NEXT_SECURITY.md`; QA em `docs/PISTEC_NEXT_QA.md`; pendências em `docs/PISTEC_NEXT_KNOWN_ISSUES.md`.
+Migração `20261104000100_pistec_next.sql` e Edge Function `mechanic`: **aguardam autorização**.
+
+## Domínio e integrações em produção (29/10/2026)
+
+| Item | Situação |
+|---|---|
+| pistec.com.br + www (Cloudflare DNS-only → Vercel, HTTPS) | Ativo |
+| Vercel: só variáveis públicas `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY` | Correto — chaves secretas não vão para o frontend |
+| Segredos Resend, Evolution, Gemini, Autentique, InfinitePay, `WORKER_TOKEN` | Supabase Edge Function secrets |
+| `APP_URL`, `APP_ORIGINS`, `EMAIL_FROM=PISTEC <nao-responda@pistec.com.br>` | Gravados |
+| Supabase Auth: site_url `https://pistec.com.br/app`, SMTP Resend, modelos PT-BR | Ativo; recuperação de senha testada |
+| Resend: domínio verificado, envio real testado; fila do worker entregando | Ativo |
+| Worker: cron recebia 401 do gateway (JWT) desde 29/10 11:55 UTC | Corrigido: publicado com `--no-verify-jwt` (valida `WORKER_TOKEN` próprio). Republicar sempre assim |
+| Gemini (gemini-2.5-flash) | Chave e geração OK |
+| Evolution 2.3.7 | Servidor OK; instância PISTEC desconectada — parear por QR Code |
+| Autentique | Chave OK (modo sandbox); falta signatário da contratada |
+| E-mail em nome de cada oficina (subdomínio) | Não implementado — decisão pendente |
+
+## Teste gratuito de 1 mês (03/11/2026)
+
+| Item | Situação |
+|---|---|
+| Regra única (mês calendário, São Paulo) no banco e no frontend | Implementado e testado |
+| Onboarding real concede 1 mês | Implementado e testado (SQL) |
+| Avisos 7/3/1/0 dias | Implementado e testado (SQL); Resend ativo, textos novos após republicar worker |
+| Landing, planos, contratação, Minha assinatura, Super Admin, ajuda, tour | Implementado e testado (E2E) |
+| Empresas existentes | Preservadas (produção: nenhuma em teste) |
+| Migração 20261103000100_trial_one_month.sql | Aguarda aplicação |
+
+Detalhes: `docs/TRIAL_POLICY_1_MONTH.md`, `docs/TRIAL_QA_REPORT.md`.
+
 ## Contratação digital 7.0 (28/10/2026)
 
 | Item | Situação |

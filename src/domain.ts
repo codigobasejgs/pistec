@@ -1,4 +1,5 @@
 import type { DemoState, Tenant, Role, Sale, SaleInput, Product, OperationalRecord, StockBalance, FinancialEntry, Settlement, EntryStatus, ProductImportRow, ImportReport, Coupon, BillingPeriod, BillingInvoice } from './types';
+import { trialEndDay } from './services/trial';
 
 const fail = (message: string): never => { throw new Error(message); };
 function integer(value: number, label: string, minimum = 0): number {
@@ -789,7 +790,7 @@ export function createTenant(state: DemoState, input: Partial<Tenant>): Tenant {
     const tenantId = input.id || id(draft, 'tenant');
     if (draft.tenants.some(row => row.id === tenantId)) fail('ID da empresa duplicado.');
     const created: Tenant = {
-      id: tenantId, name, slug, legalName: input.legalName || name, document: input.document || '', owner: text(input.owner || name, 'Responsável'), email, profile: input.profile || 'Autopeças', planId, status: input.status || 'Teste', dueDate: input.dueDate || new Date(Date.parse(now(draft)) + integer(plan.trialDays, 'Dias de teste') * 86400000).toISOString().slice(0, 10), notes: input.notes || '',
+      id: tenantId, name, slug, legalName: input.legalName || name, document: input.document || '', owner: text(input.owner || name, 'Responsável'), email, profile: input.profile || 'Autopeças', planId, status: input.status || 'Teste', dueDate: input.dueDate || trialEndDay(new Date(now(draft)), integer(plan.trialMonths ?? 1, 'Meses de teste')), notes: input.notes || '',
       branding: input.branding ? structuredClone(input.branding) : { primary: '#2dd4bf', secondary: '#6366f1', accent: '#f59e0b', sidebar: '#0f172a', theme: 'dark', logo: '', font: 'Inter', density: 'comfortable', radius: 'default', footer: 'Gestão com PISTEC', widgets: ['revenue', 'sales', 'stock', 'services'] },
     };
     draft.tenants.push(created);
@@ -809,7 +810,10 @@ const permissions: Record<Role, string[]> = {
   Atendente: ['dashboard', 'clientes', 'agenda', 'whatsapp', 'orcamentos', 'crm', 'ordens-servico:visualizar'],
   Financeiro: ['dashboard', 'financeiro', 'caixa', 'relatorios', 'compras:visualizar', 'vendas:visualizar', 'clientes:visualizar'],
 };
+/** Telas do PISTEC NEXT reutilizam a permissão do módulo de origem (espelho de app.record_module). */
+const moduleAlias: Record<string, string> = { cotacoes: 'compras', frotas: 'clientes', autopilot: 'dashboard', checkin: 'ordens-servico', 'moto-express': 'ordens-servico', mecanico: 'ordens-servico', 'estoque-inteligente': 'estoque', 'lucro-os': 'relatorios', fideliza: 'clientes' };
 export function can(role: Role, module: string, action = 'visualizar'): boolean {
+  module = moduleAlias[module] ?? module;
   if (!['visualizar', 'cadastrar', 'editar', 'excluir', 'cancelar', 'exportar', 'configurar'].includes(action)) return false;
   const allowed = permissions[role];
   if (!allowed) return false;

@@ -1,7 +1,7 @@
 export type Role = 'Proprietário' | 'Administrador' | 'Gerente' | 'Vendedor' | 'Caixa' | 'Estoquista' | 'Mecânico' | 'Atendente' | 'Financeiro';
 export type Theme = 'dark' | 'light' | 'system';
 export type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
-export interface Plan { id: string; name: string; monthly: number; quarterly: number; annual: number; users: number; branches: number; products: number; whatsapp: number; trialDays: number; features: string[] }
+export interface Plan { id: string; name: string; monthly: number; quarterly: number; annual: number; users: number; branches: number; products: number; whatsapp: number; trialMonths: number; /** legado (demonstração salva antes de 03/11/2026) */ trialDays?: number; features: string[] }
 /** widgets: ordem = ordem de exibição no dashboard. */
 export interface Branding { primary: string; secondary: string; accent: string; sidebar: string; theme: Theme; logo: string; font: string; density: 'comfortable' | 'compact'; radius: 'compact' | 'default' | 'round'; footer: string; widgets: string[] }
 export interface Tenant { id: string; slug: string; name: string; legalName: string; document: string; owner: string; email: string; profile: string; planId: string; status: string; dueDate: string; branding: Branding; notes: string }
