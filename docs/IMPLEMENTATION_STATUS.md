@@ -1,6 +1,20 @@
 # Status de Implementação PISTEC
 
-## Operação produção 12.0 (29/10/2026) — pronto para publicar, aguardando autorização
+## Release publicado (30/10/2026, autorizado pelo proprietário)
+
+| Etapa | Evidência |
+|---|---|
+| Backup | JSON de 13 tabelas + definições de 9 funções + lista de migrations, fora do repositório (`~/pistec-backups/2026-10-30-11-08-43`) |
+| Migrations | `20261103000100` e `20261104000100` aplicadas em transação única; 24 aplicadas, 0 pendentes |
+| Edge Functions | email-webhook v6, whatsapp-webhook v6, whatsapp v7, mechanic v1 (nova), worker v14 |
+| Git | `main` = `feat/pistec-3-backend` = `1d86226` |
+| Vercel | `dpl_EXhVFWVgMFko1gTzJBNR2M3tA6p6` READY → `1d86226` (anterior para rollback: `dpl_7kAD7qYQ2kyv3jFMHhDCm6YFCAw1`) |
+| Worker | 200 a cada minuto com etapa `bot`; eventos da conta E2E temporária finalizados como `tenant_removed` |
+| Smoke | 14/14: site, cabeçalhos de `/c/*`, `portal_view` anônimo com token inválido = nulo, `trial_policy` = mês calendário, RPCs internas negadas sem sessão, funções exigem login/token, webhooks recusam origem falsa |
+| E2E em produção | `real.e2e.ts` 1/1 (conta temporária criada e removida; 0 usuários restantes; empresa existente inalterada: Ativa, vence 24/11) |
+| Pendente | `RESEND_WEBHOOK_SECRET` (email-webhook responde 503 "Configuração ausente" até lá), pareamento WhatsApp, liberar IA da empresa de teste, pagamento InfinitePay |
+
+## Operação produção 12.0 (29/10/2026) — preparação
 
 Go/No-Go: `docs/PISTEC_RELEASE_BLOCKERS.md`. Release: `docs/PISTEC_PRODUCTION_RELEASE.md`. Integrações comprovadas: `docs/PISTEC_PRODUCTION_INTEGRATIONS.md`. QA: `docs/PISTEC_RELEASE_QA.md` (334 unit/SQL, 67 E2E, ensaio de migrations no banco real). Rollback: `docs/PISTEC_RELEASE_ROLLBACK.md`.
 
