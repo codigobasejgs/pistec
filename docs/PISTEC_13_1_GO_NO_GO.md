@@ -1,6 +1,14 @@
 # PISTEC 13.1: GO/NO-GO (30/10/2026)
 
-**Recomendação: GO para publicar landing, planos e catálogo**, com as integrações pendentes comunicadas com honestidade na própria página. Ainda não publicado: aguarda autorização.
+**Recomendação: GO para publicar landing, planos e catálogo**, com as integrações pendentes comunicadas com honestidade na própria página.
+
+**Publicado em 30/10/2026, com autorização do proprietário:**
+- Backup lógico em `~/pistec-backups/2026-10-30-13-06-09`.
+- Migration `20261105000100` aplicada (25 migrations no total). Preços, a empresa `teste` e os 2 contratos ficaram intactos. Catálogo: Essencial 8, Profissional 26, Premium 28, Enterprise 28.
+- `main` = `60bb564`; o deploy na Vercel concluiu.
+- Smoke 14/14. `plan_catalog` anônimo responde 200; `admin_set_feature_status` sem sessão responde 401. `robots.txt` e `sitemap.xml` respondem 200; `/app/login` envia `X-Robots-Tag: noindex`.
+- /planos em produção usa o catálogo do servidor, com 0 px de rolagem lateral em 1440 e 390.
+- E2E v2/pwa após o lazy do Layout: 20/20.
 
 ## O que muda
 
