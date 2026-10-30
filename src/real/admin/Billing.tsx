@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { trialLabel } from '../../services/trial';
+import { STATUS_LABEL, type Feature, type FeatureStatus } from '../../services/catalog';
 import { useNavigate } from 'react-router-dom';
 import { Download, Plus } from 'lucide-react';
 import { Button, Field, Modal, PageHeader, Panel, Stat } from '../../ui';
@@ -27,6 +28,26 @@ export function Subscriptions() {
         { key: 'end', label: 'Fim do período', sort: s => s.current_period_end, render: s => date(s.current_period_end) }, { key: 'gw', label: 'Gateway', render: s => s.provider }]}/>}</Loaded></Panel></div>;
 }
 
+type CatalogData = { plans: { id: string; name: string; features: string[] }[]; features: (Pick<Feature, 'key' | 'name' | 'category' | 'status' | 'summary'> & { modules: string[] })[] };
+/** Recursos comerciais (fonte única da landing, contratação e Anexo I) e sua liberação por plano, calculada dos módulos do plano. */
+function FeatureMatrix({ canEdit }: { canEdit: boolean }) {
+  const q = useQuery(() => call<CatalogData>('plan_catalog'), []);
+  const [change, setChange] = useState<{ key: string; name: string; status: FeatureStatus } | null>(null);
+  return <Panel title="Recursos e planos" className="feature-matrix">
+    <p className="muted small">Mesma lista exibida em /planos, na contratação e no Anexo I do contrato. A liberação vem dos módulos de cada plano e é aplicada pelo servidor. Alterar o estado comercial não muda preços nem módulos.</p>
+    <Loaded q={q}>{c => <div className="table-wrap"><table className="responsive-table"><caption>Recursos por plano</caption>
+      <thead><tr><th scope="col">Recurso</th><th scope="col">Estado</th>{c.plans.map(p => <th scope="col" key={p.id}>{p.name}</th>)}</tr></thead>
+      <tbody>{c.features.map(f => <tr key={f.key}>
+        <td data-label="Recurso"><strong>{f.name}</strong><br/><small className="muted">{f.category} · módulos: {f.modules.join(', ')}</small></td>
+        <td data-label="Estado">{canEdit ? <select aria-label={`Estado de ${f.name}`} value={f.status} onChange={e => setChange({ key: f.key, name: f.name, status: e.target.value as FeatureStatus })}>
+          {Object.entries(STATUS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select> : <StatusBadge>{STATUS_LABEL[f.status]}</StatusBadge>}</td>
+        {c.plans.map(p => <td key={p.id} data-label={p.name}>{p.features.includes(f.key) ? 'Incluído' : '—'}</td>)}</tr>)}</tbody></table></div>}</Loaded>
+    <ConfirmAction open={!!change} title={`Alterar estado de ${change?.name ?? ''}`} confirmLabel="Alterar estado" onClose={() => setChange(null)}
+      description={<p>Novo estado: <strong>{change && STATUS_LABEL[change.status]}</strong>. Aparece imediatamente na landing e nos planos. Só marque “Disponível” após homologar o recurso.</p>}
+      onConfirm={async reason => { await call('admin_set_feature_status', { p_key: change!.key, p_status: change!.status, p_reason: reason }); q.reload(); }}/>
+  </Panel>;
+}
+
 export function Plans() {
   const { role } = useAdmin(); const q = useQuery(() => rows<PlanRow>('plans', '*', b => b.order('sort')), []);
   const usage = useQuery(() => rows<TenantRow>('tenants', 'plan_id,status'), []);
@@ -49,13 +70,14 @@ export function Plans() {
       <ul className="plan-limits"><li>{pl.users} usuários</li><li>{pl.branches} filiais</li><li>{pl.products.toLocaleString('pt-BR')} produtos</li><li>{pl.whatsapp} WhatsApp</li><li>{pl.ai_messages} consultas IA/dia</li><li>{trialLabel(pl.trial_months ?? 1)}</li></ul>
       <p className="small"><StatusBadge>{pl.active ? 'Ativo' : 'Inativo'}</StatusBadge> · {usage.data?.filter(t => t.plan_id === pl.id && t.status !== 'Cancelada').length ?? '…'} empresa(s)</p>
       {canEdit && <Button onClick={() => setEdit(pl)}>Editar</Button>}</Panel>)}</div>}</Loaded>
+    <FeatureMatrix canEdit={canEdit}/>
     {edit && <Modal title={p ? `Editar plano ${p.name}` : 'Novo plano'} open onClose={() => setEdit(null)} size="lg"><form className="stack" onSubmit={submit}>
       <fieldset><legend>Identificação</legend><div className="form-grid"><Field label="Nome"><input name="name" required defaultValue={p?.name} maxLength={60}/></Field><Field label="Ordem na landing"><input name="sort" type="number" min={0} defaultValue={p?.sort ?? 9}/></Field>
         <label><input type="checkbox" name="active" defaultChecked={p?.active ?? true}/> Ativo (aparece para novas contratações)</label></div></fieldset>
       <fieldset><legend>Preços (R$)</legend><div className="form-grid"><Field label="Mensal"><input name="monthly" inputMode="decimal" required defaultValue={reais(p?.monthly)}/></Field><Field label="Trimestral"><input name="quarterly" inputMode="decimal" required defaultValue={reais(p?.quarterly)}/></Field><Field label="Anual"><input name="annual" inputMode="decimal" required defaultValue={reais(p?.annual)}/></Field></div></fieldset>
       <fieldset><legend>Limites</legend><div className="form-grid">{([['users', 'Usuários', p?.users], ['branches', 'Filiais', p?.branches], ['products', 'Produtos', p?.products], ['whatsapp', 'Instâncias WhatsApp', p?.whatsapp], ['aiMessages', 'Consultas IA por dia', p?.ai_messages], ['trialMonths', 'Meses de teste grátis (0–3)', p?.trial_months ?? 1]] as const).map(([k, l, v]) =>
         <Field key={k} label={l}><input name={k} type="number" min={0} max={k === 'trialMonths' ? 3 : undefined} required defaultValue={v ?? 0}/></Field>)}</div></fieldset>
-      <Field label="Recursos exibidos na landing (um por linha)"><textarea name="features" rows={4} defaultValue={p?.features.join('\n')}/></Field>
+      <Field label="Destaques livres (legado, um por linha)" hint="A landing, a contratação e o contrato usam a lista “Recursos e planos”, calculada pelos módulos."><textarea name="features" rows={4} defaultValue={p?.features.join('\n')}/></Field>
       {error && <p role="alert" className="field-error">{error}</p>}<div className="toolbar"><Button onClick={() => setEdit(null)}>Cancelar</Button><Button type="submit" variant="primary" loading={pending}>Salvar plano</Button></div></form></Modal>}
   </div>;
 }

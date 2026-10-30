@@ -280,7 +280,8 @@ tr.clickable:hover td { background: rgba(22,119,255,.07); }
 .subscription-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; border-color: rgba(255,181,71,.4); }
 .subscription-hero > svg { color: var(--accent); } .subscription-hero p { margin: 4px 0 0; } .subscription-hero .badge { margin-left: auto; }
 .feature-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.feature-list span { display: flex; align-items: center; gap: 8px; } .feature-list svg { color: var(--success); }
+ul.feature-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.feature-list span, .feature-list li { display: flex; align-items: center; gap: 8px; } .feature-list svg { color: var(--success); }
 .plan-option { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--elevated); }
 .plan-option p { margin: 0; color: var(--muted); font-size: .84rem; flex: 1; }
 .branding-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
@@ -346,6 +347,10 @@ tr.clickable:hover td { background: rgba(22,119,255,.07); }
 
 /* Banner demonstrativo compacto (substitui a faixa). */
 .demo-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid rgba(255,176,32,.35); border-radius: 999px; background: rgba(255,176,32,.08); color: var(--accent); font-size: .7rem; font-weight: 700; letter-spacing: .08em; cursor: pointer; white-space: nowrap; }
+.btn.demo-cta { min-height: 32px; padding: 4px 12px; font-size: .78rem; white-space: nowrap; }
+.demo-cta-box { margin-top: 14px; padding: 12px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+/* Só em telas largas; no restante o CTA fica no aviso DEMO (modal). */
+@media (max-width: 1599px) { .btn.demo-cta { display: none; } }
 .demo-pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(255,176,32,.2); }
 [data-theme="light"] .demo-pill { color: #92400e; }
 .demo-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
@@ -731,6 +736,7 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); 
 .photo-list img, .portal-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); }
 .portal { --text: #0c1a33; min-height: 100vh; max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; align-content: start; background: #eef3fa; color: #0c1a33; color-scheme: light; }
 .portal .muted { color: #52637d; }
+.portal .field span, .portal label { color: #1e293b; }
 .portal-head { display: flex; align-items: center; gap: 12px; } .portal-head img { max-height: 56px; max-width: 160px; object-fit: contain; } .portal-head h1 { margin: 0; font-size: 1.3rem; }
 .portal-card { background: #fff; border: 1px solid #d9e3f0; border-radius: 14px; padding: 16px; display: grid; gap: 8px; }
 .portal-card h2 { margin: 0; font-size: 1.05rem; }

@@ -42,7 +42,7 @@ async function rows(client: SupabaseClient, table: string, tenant?: string, plat
 export async function loadRealState(client: SupabaseClient, tenantId: string | null, admin = false): Promise<DemoState> {
   const state = emptyState();
   const [plans, tenants, branches] = await Promise.all([rows(client, 'plans'), rows(client, 'tenants'), rows(client, 'branches')]);
-  state.plans = plans.map(r => ({ id: str(r.id), name: str(r.name), monthly: integer(r.monthly), quarterly: integer(r.quarterly), annual: integer(r.annual), users: integer(r.users), branches: integer(r.branches), products: integer(r.products), whatsapp: integer(r.whatsapp), trialMonths: integer(r.trial_months ?? 1), features: textArray(r.features) }));
+  state.plans = plans.map(r => ({ id: str(r.id), name: str(r.name), monthly: integer(r.monthly), quarterly: integer(r.quarterly), annual: integer(r.annual), users: integer(r.users), branches: integer(r.branches), products: integer(r.products), whatsapp: integer(r.whatsapp), trialMonths: integer(r.trial_months ?? 1), features: textArray(r.features), modules: textArray(r.modules), aiMessages: integer(r.ai_messages ?? 0) }));
   state.tenants = tenants.map(r => ({ id: str(r.id), slug: str(r.slug), name: str(r.name), legalName: str(r.legal_name), document: str(r.document), owner: str(r.owner_name), email: str(r.email), profile: str(r.profile), planId: str(r.plan_id), status: str(r.status), dueDate: str(r.due_date), notes: str(r.notes), branding: { ...branding, ...(r.branding as Partial<Branding>) } }));
   state.branches = branches.map(r => ({ id: str(r.id), tenantId: str(r.tenant_id), name: str(r.name), active: r.active === true }));
   if (!tenantId && !admin) return state;

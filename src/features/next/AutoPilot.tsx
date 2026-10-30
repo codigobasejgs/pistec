@@ -7,6 +7,7 @@ import { today } from '../../lib';
 import { can } from '../../domain';
 import { autopilot, type WorkshopSettings } from '../../services/workshop';
 import { useWorkshop } from './useWorkshop';
+import { cents } from '../erp/logic';
 
 const RULES: [keyof WorkshopSettings, string, string][] = [
   ['quoteFollowupDays', 'Orçamento sem resposta após (dias)', 'Orçamentos Abertos/Enviados sem atualização.'],
@@ -29,7 +30,7 @@ export default function AutoPilot() {
   const canConfig = can(session.role, 'configuracoes', 'configurar');
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const f = new FormData(e.currentTarget);
-    try { await save({ ...Object.fromEntries(RULES.map(([k]) => [k, Number(f.get(k))])), mode: f.get('mode') as WorkshopSettings['mode'] }); setConfig(false); notice('Regras salvas.'); } catch (err) { notice((err as Error).message); }
+    try { await save({ ...Object.fromEntries(RULES.map(([k]) => [k, Number(f.get(k))])), mode: f.get('mode') as WorkshopSettings['mode'], hourlyCost: cents(String(f.get('hourlyCost') || '0')) }); setConfig(false); notice('Regras salvas.'); } catch (err) { notice((err as Error).message); }
   }
   async function snooze(key: string) {
     const until = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
@@ -44,7 +45,7 @@ export default function AutoPilot() {
       <Stat label="Atenção" value={count('média')} tone="amber"/>
       <Stat label="Acompanhamento" value={count('baixa')} tone="cyan"/>
     </div>
-    <Panel><div className="toolbar" role="group" aria-label="Filtrar por gravidade">{['', 'alta', 'média', 'baixa'].map(s => <button key={s} className={`btn ${filter === s ? 'primary' : ''}`} onClick={() => setFilter(s)}>{s || 'Todas'}</button>)}</div>
+    <Panel><div className="toolbar" role="group" aria-label="Filtrar por gravidade">{([['', 'Todas'], ['alta', 'Urgentes'], ['média', 'Atenção'], ['baixa', 'Acompanhar']] as const).map(([k, l]) => <button key={k} className={`btn ${filter === k ? 'primary' : ''}`} aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>)}</div>
       {!shown.length ? <Empty text="Nenhuma pendência pelas regras configuradas. Bom trabalho!"/> :
         <ul className="autopilot-list" data-tour="autopilot-list">{shown.map(a => <li key={a.key} className={`autopilot-item sev-${a.severity === 'média' ? 'media' : a.severity}`}>
           <div><Badge>{a.severity === 'alta' ? 'Urgente' : a.severity === 'média' ? 'Atenção' : 'Acompanhar'}</Badge> <strong>{a.title}</strong><p className="muted small">{a.detail}</p></div>
@@ -56,6 +57,7 @@ export default function AutoPilot() {
     </Panel>
     <Modal title="Regras do AutoPilot" open={config} onClose={() => setConfig(false)}><form className="stack" onSubmit={submit}>
       {RULES.map(([k, label, hint]) => <label key={k} className="field"><span>{label}</span><input name={k} type="number" min={0} max={k === 'lowMarginPct' ? 100 : 365} defaultValue={Number(settings[k])} required/>{hint && <small className="field-hint">{hint}</small>}</label>)}
+      <label className="field"><span>Custo da hora de mão de obra própria (R$)</span><input name="hourlyCost" inputMode="decimal" defaultValue={(settings.hourlyCost / 100).toFixed(2)}/><small className="field-hint">Usado no Lucro por OS (horas trabalhadas × custo/hora). Visível só para quem acessa Relatórios.</small></label>
       <label className="field"><span>Modo</span><select name="mode" defaultValue={settings.mode}><option value="informativo">Informativo (somente alerta)</option><option value="assistido">Assistido (prepara ações, exige confirmação)</option></select><small className="field-hint">O modo automatizado não está habilitado: nenhuma ação externa, financeira ou de compra é executada sem você.</small></label>
       <div className="toolbar"><button type="button" className="btn" onClick={() => setConfig(false)}>Cancelar</button><button className="btn primary">Salvar regras</button></div>
     </form></Modal>

@@ -25,9 +25,9 @@ test('menu e rodapé sem aba "Contrato"; /contrato antigo leva a /planos', async
 test('/planos inicia a contratação com o plano e a periodicidade escolhidos', async ({ page }) => {
   await page.goto('/planos');
   await page.getByRole('button', { name: 'Anual' }).click();
-  const premium = page.getByRole('link', { name: 'Contratar Premium' });
+  const premium = page.getByRole('link', { name: 'Começar com o Premium' });
   await expect(premium).toHaveAttribute('href', '/app/contratar/premium?periodo=annual');
-  await expect(page.getByRole('link', { name: /Contratar Enterprise/ })).toHaveCount(0); // sob proposta: consultor
+  await expect(page.getByRole('link', { name: /Começar com o Enterprise/ })).toHaveCount(0); // sob proposta: consultor
   await expect(page.getByRole('link', { name: 'Falar com consultor' })).toBeVisible();
 });
 

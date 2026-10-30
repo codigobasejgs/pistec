@@ -23,7 +23,7 @@ export default function Profit() {
       <Stat label={`Abaixo da meta (${settings.lowMarginPct}%)`} value={low} tone={low ? 'red' : 'green'}/>
     </div>
     <Panel><div className="toolbar"><TextField label="De" type="date" value={start} onChange={setStart}/><TextField label="Até" type="date" value={end} onChange={setEnd}/></div>
-      {!settings.hourlyCost && <p className="callout warning">Custo/hora não configurado (AutoPilot → Regras de custo em Configurações da oficina): o custo de mão de obra própria está zerado e a margem fica superestimada.</p>}
+      {!settings.hourlyCost && <p className="callout warning">Custo/hora não configurado (AutoPilot → Regras → Custo da hora): o custo de mão de obra própria está zerado e a margem fica superestimada.</p>}
       {!rows.length ? <Empty text="Nenhuma OS pronta ou entregue no período."/> : <DataTable rows={rows} columns={[
         { key: 'title', label: 'OS', render: (r: typeof rows[number]) => <>{r.record.title}<br/><small className="muted">{date(r.record.date)} · {r.record.status}</small></> },
         { key: 'revenue', label: 'Receita', render: (r: typeof rows[number]) => money(r.revenue) },

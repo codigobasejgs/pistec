@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { rpc, useDemo } from '../store';
 import { Button, Field, PageHeader, Panel } from '../ui';
 import { date, money } from '../lib';
-import type { Tenant } from '../types';
+import type { Plan, Tenant } from '../types';
+import { Check } from 'lucide-react';
+import { FEATURES, STATUS_LABEL, featureInPlan } from '../services/catalog';
 import { searchHelp } from '../features/settings/help';
 import { supabase } from './client';
 import { integer } from './read';
@@ -162,6 +164,7 @@ function Subscription({ tenant }: { tenant: Tenant }) {
       <Panel title="Assinatura atual">{read.data.subscription ? <><p>Plano: {state.plans.find(p => p.id === read.data?.subscription?.plan_id)?.name ?? read.data.subscription.plan_id}</p><p>Status: {read.data.subscription.status} · {periods[read.data.subscription.period]}</p><p>Fim do período: {date(read.data.subscription.current_period_end)}</p>{read.data.subscription.cancel_at_period_end ? <p>Cancelamento agendado para o fim do período.</p>
         : session.role === 'Proprietário' && <Button variant="danger" disabled={task.pending} onClick={() => { if (!confirm('Cancelar a assinatura ao fim do período já pago? Sem multa; os dados ficam disponíveis para exportação.')) return;
           void task.run(async () => { await perform(noDemo, rpc('cancel_subscription', { p_tenant: tenant.id })); read.refresh(); }, 'Cancelamento agendado para o fim do período.'); }}>Cancelar assinatura</Button>}</> : <p role="status">Nenhuma assinatura encontrada para esta empresa.</p>}</Panel>
+      <PlanFeatures plan={state.plans.find(p => p.id === (read.data?.subscription?.plan_id ?? tenant.planId))}/>
       <MyContracts tenantId={tenant.id} slug={tenant.slug} canSign={allowed}/>
       <Panel title="Solicitar fatura"><p>Gerar uma fatura não paga nem altera o plano. A confirmação depende do servidor.</p><form className="stack" onSubmit={e => {
         e.preventDefault();
@@ -185,6 +188,18 @@ function Subscription({ tenant }: { tenant: Tenant }) {
       <Button type="submit" variant="primary" disabled={!selected} loading={task.pending}>Solicitar fatura</Button></fieldset>{!allowed && <p>Somente proprietário ou administrador pode solicitar faturas.</p>}</form></Panel>
       <Panel title="Faturas"><p>O retorno do checkout não comprova pagamento. Atualize o status após concluir no provedor.</p>{read.data.invoices.length ? <div className="table-wrap"><table><caption>Faturas da empresa</caption><thead><tr><th scope="col">Fatura</th><th scope="col">Vencimento</th><th scope="col">Valor</th><th scope="col">Status</th><th scope="col">Pagamento</th></tr></thead><tbody>{read.data.invoices.map(invoice => <tr key={invoice.id}><td>{invoice.id}<br/>{state.plans.find(p => p.id === invoice.plan_id)?.name ?? invoice.plan_id} · {periods[invoice.period]} · {invoice.provider}</td><td>{date(invoice.due_date)}</td><td>{money(invoice.amount)}<br/>Desconto: {money(invoice.discount)}</td><td>{invoice.status}</td><td>{allowed && invoice.amount > 0 && ['Pendente', 'Vencida'].includes(invoice.status) ? <Button disabled={task.pending} aria-label={`Abrir checkout da fatura ${invoice.id}`} onClick={() => void task.run(async () => { await openInvoiceCheckout(invoice.id); }, 'Aguardando confirmação do servidor (awaiting).')}>Abrir checkout</Button> : '—'}</td></tr>)}</tbody></table></div> : <p role="status">Nenhuma fatura encontrada.</p>}</Panel>
     </>}</Loaded>{task.feedback}</>;
+}
+
+/** Recursos do plano pelo catálogo único (mesma regra de módulos aplicada pelo servidor) e o que um upgrade acrescenta. */
+function PlanFeatures({ plan }: { plan?: Plan }) {
+  const { state } = useDemo();
+  if (!plan) return null;
+  const has = (p: Plan) => FEATURES.filter(f => featureInPlan(f, p.modules ?? ['*'])), mine = has(plan);
+  const next = state.plans.filter(p => p.monthly > plan.monthly).sort((a, b) => a.monthly - b.monthly)[0];
+  const extra = next ? has(next).filter(f => !mine.includes(f)) : [];
+  return <Panel title="Recursos do seu plano"><ul className="feature-list">{mine.map(f => <li key={f.key}><Check size={16}/>{f.name}{f.status !== 'disponivel' && <small className="muted"> · {STATUS_LABEL[f.status]}</small>}</li>)}</ul>
+    <p className="small">Limites: {plan.users} usuários · {plan.branches} filial(is) · {plan.products.toLocaleString('pt-BR')} produtos · {plan.whatsapp} WhatsApp · {plan.aiMessages ? `${plan.aiMessages} respostas de IA/dia` : 'sem IA'}.</p>
+    {next && extra.length > 0 && <p className="small">No {next.name}: {extra.map(f => f.name).join(', ')}. <a href="/planos">Comparar planos</a></p>}</Panel>;
 }
 
 function Members({ tenant }: { tenant: Tenant }) {

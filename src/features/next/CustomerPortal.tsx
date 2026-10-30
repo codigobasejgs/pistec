@@ -25,7 +25,7 @@ export default function CustomerPortal() {
   if (view === 'invalid') return <main className="portal"><h1>Link indisponível</h1><p>Este link expirou, foi revogado ou não existe. Peça um novo link à oficina.</p></main>;
   const c = view.company, wa = c.whatsapp.replace(/\D/g, '');
   return <main className="portal" style={{ '--brand': c.primary } as CSSProperties}>
-    <header className="portal-head">{c.logo ? <img src={c.logo} alt={c.name}/> : <strong>{c.name}</strong>}<div><h1>{view.customer ? `Olá, ${view.customer.name}` : c.name}</h1><p className="muted small">Link válido até {date(view.expiresAt)}</p></div></header>
+    <header className="portal-head">{c.logo && <img src={c.logo} alt={c.name}/>}<div>{view.customer && c.logo === '' && <strong>{c.name}</strong>}<h1>{view.customer ? `Olá, ${view.customer.name}` : c.name}</h1><p className="muted small">Link válido até {date(view.expiresAt)}</p></div></header>
     {view.vehicles.length > 0 && <section className="portal-card"><h2>Meus veículos</h2><ul>{view.vehicles.map(v => <li key={v.id}>{v.title} · {v.plate}{v.mileage && ` · ${Number(v.mileage).toLocaleString('pt-BR')} km (último registro)`}</li>)}</ul></section>}
     {view.records.map(r => r.kind === 'orcamentos' ? <Quote key={r.id} rec={r} token={token} onDone={load}/> : <Service key={r.id} rec={r}/>)}
     {!view.records.length && <p>Nenhum atendimento disponível neste link.</p>}

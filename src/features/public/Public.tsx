@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import { trialLabel } from '../../services/trial';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, ChevronRight, Menu, Package, ShieldCheck, Wrench, X, Zap } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, Menu, ShieldCheck, X } from 'lucide-react';
 import { useDemo } from '../../store';
 import { createTenant } from '../../domain';
 import { date, imageData, money, today, uid } from '../../lib';
@@ -15,6 +15,9 @@ import { useAction } from './useAction';
 import BrazilianAddressFields from '../address/BrazilianAddressFields';
 import { addressErrors, emptyAddress, formatAddress, type Address } from '../../services/address';
 import './public.css';
+import { useCatalog } from './useCatalog';
+import { STATUS_LABEL, type Feature } from '../../services/catalog';
+import { JOURNEY, NEXT_SHOWCASE, SEGMENTS } from './showcase';
 
 const modules = [
   ['pdv', 'PDV', 'Do balcão à venda concluída. Agilidade sem perder o controle.'],
@@ -49,76 +52,97 @@ function Screenshot({ name, title, hero = false }: { name: string; title: string
   </figure>;
 }
 
+const PLAN_FOR: Record<string, string> = {
+  essencial: 'Gestão do dia a dia: balcão, estoque, clientes e financeiro.',
+  profissional: 'Oficinas: ordens de serviço, orçamentos, agenda, compras e WhatsApp.',
+  premium: 'Operação completa com CRM, automações, IA ampliada e até 3 filiais.',
+  enterprise: 'Redes e operações maiores, com limites dedicados e implantação assistida.',
+};
+const CATEGORIES = ['Gestão comercial', 'Oficina', 'Inteligência', 'Relacionamento', 'Administração'] as const;
+const qty = (n: number, one: string, many: string) => `${n.toLocaleString('pt-BR')} ${n === 1 ? one : many}`;
+
+function FeatureBadge({ status }: { status: Feature['status'] }) {
+  return status === 'disponivel' ? null : <span className={`pub-badge pub-badge-${status}`}>{STATUS_LABEL[status]}</span>;
+}
+
 function Pricing({ compact = false }: { compact?: boolean }) {
-  const { state } = useDemo();
+  const catalog = useCatalog();
   const [period, setPeriod] = useState<Period>('monthly');
+  const [compare, setCompare] = useState<[string, string]>(['profissional', 'premium']);
+  const plans = catalog.plans, feature = (key: string) => catalog.features.find(f => f.key === key);
+  const added = (i: number) => plans[i].features.filter(k => i === 0 || !plans[i - 1].features.includes(k));
   return <section className="pub-section" id="planos">
     <div className="pub-section-heading">
-      <span className="pub-eyebrow">CRESÇA NO SEU RITMO</span>
-      {compact ? <h2>O próximo nível começa<br/>com o plano certo.</h2> : <h1>O próximo nível começa<br/>com o plano certo.</h1>}
-      <p>Experimente grátis por 1 mês. Preços totais por período; a cobrança só começa depois do teste e da contratação.</p>
+      <span className="pub-eyebrow">PLANOS PISTEC</span>
+      {compact ? <h2>Escolha o plano ideal para o seu negócio.</h2> : <h1>Escolha o plano ideal para o seu negócio.</h1>}
+      <p>Comece com 1 mês grátis e escolha os recursos que acompanham o crescimento da sua empresa. O valor mostrado é o total cobrado em cada período.</p>
     </div>
-    <div className="pub-periods" aria-label="Periodicidade">
+    <div className="pub-periods" role="group" aria-label="Periodicidade da cobrança">
       {Object.entries(periods).map(([key, value]) => <button key={key} aria-pressed={period === key} onClick={() => setPeriod(key as Period)}>{value.label}</button>)}
     </div>
     <div className="pub-plan-grid">
-      {state.plans.map((plan, i) => {
-        const price = planPrice(plan, period);
-        const savings = planSavings(plan, period);
-        const isEnterprise = plan.id === 'enterprise';
-        return <article className={`pub-plan ${i === 1 ? 'pub-plan-featured' : ''}`} key={plan.id}>
-          {i === 1 && <span className="pub-plan-flag">MAIS ESCOLHIDO</span>}
+      {plans.map((plan, i) => {
+        const price = planPrice(plan, period), savings = planSavings(plan, period), enterprise = !plan.selfService, featured = plan.id === 'profissional';
+        return <article className={`pub-plan ${featured ? 'pub-plan-featured' : ''}`} key={plan.id}>
+          {featured && <span className="pub-plan-flag">RECOMENDADO PARA OFICINAS</span>}
           <h3>{plan.name}</h3>
-          <p className="pub-plan-trial">{trialLabel(plan.trialMonths ?? 1)} para empresas novas</p>
-          {isEnterprise ? <>
+          <p className="pub-plan-for">{PLAN_FOR[plan.id] ?? ''}</p>
+          {enterprise ? <>
             <div className="pub-price"><small>Sob consulta</small></div>
-            <p>A partir de {money(plan.monthly)}/mês · Implantação e limites dedicados sob medida.</p>
+            <p className="pub-plan-period">Referência: {money(plan.monthly)}/mês. Limites e implantação definidos em proposta.</p>
           </> : <>
-            <div className="pub-price">{money(price.monthly)}<small>/mês</small></div>
-            <p>{money(price.total)} cobrados por período {periods[period].label.toLowerCase()}</p>
-            {savings > 0 && <span className="pub-plan-economy">Economia de {savings}% neste plano</span>}
+            <div className="pub-price">{money(price.total)}<small>{period === 'monthly' ? '/mês' : period === 'quarterly' ? '/trimestre' : '/ano'}</small></div>
+            <p className="pub-plan-period">{period === 'monthly' ? 'Cobrança mensal.' : `Cobrança única por ${periods[period].label.toLowerCase()} · equivale a ${money(price.monthly)}/mês.`}</p>
+            {savings > 0 && <span className="pub-plan-economy">{savings}% a menos que {periods[period].months} meses no plano mensal</span>}
           </>}
-          {isEnterprise ?
+          <p className="pub-plan-trial">{trialLabel(plan.trialMonths ?? 1)} para empresas novas</p>
+          {enterprise ?
             <Link className="pub-button pub-button-outline" to="/contato">Falar com consultor<ArrowRight size={16}/></Link> :
-            <a className={`pub-button ${i === 1 ? '' : 'pub-button-outline'}`} href={`/app/contratar/${encodeURIComponent(plan.id)}?periodo=${period}`}>Contratar {plan.name}<ArrowRight size={16}/></a>}
-          {!isEnterprise && <Link className="pub-plan-contract" to={`/cadastro?plano=${encodeURIComponent(plan.id)}&periodo=${period}`}>Experimentar na demonstração (sem cadastro real)</Link>}
-          {!isEnterprise && <small className="pub-plan-note">Você confere o resumo e as condições do contrato antes de qualquer cobrança.</small>}
-          <ul>
-            {[
-              `${plan.users} ${plan.users === 1 ? 'usuário' : 'usuários'} incluídos`,
-              `${plan.branches} ${plan.branches === 1 ? 'filial' : 'filiais'} com estoque independente`,
-              `${plan.products.toLocaleString('pt-BR')} produtos no catálogo`,
-              `${plan.whatsapp} ${plan.whatsapp === 1 ? 'instância' : 'instâncias'} WhatsApp`,
-              ...plan.features,
-            ].map((feature, index) => <li key={`${feature}-${index}`}><Check size={16}/>{feature}</li>)}
+            <a className={`pub-button ${featured ? '' : 'pub-button-outline'}`} href={`/app/contratar/${encodeURIComponent(plan.id)}?periodo=${period}`}>Começar com o {plan.name}<ArrowRight size={16}/></a>}
+          <ul className="pub-plan-limits">
+            <li><Check size={16}/>{qty(plan.users, 'usuário', 'usuários')}</li>
+            <li><Check size={16}/>{qty(plan.branches, 'filial', 'filiais')} com estoque próprio</li>
+            <li><Check size={16}/>{qty(plan.products, 'produto', 'produtos')} no catálogo</li>
+            <li><Check size={16}/>{qty(plan.whatsapp, 'número', 'números')} de WhatsApp</li>
+            <li>{plan.aiMessages ? <><Check size={16}/>{qty(plan.aiMessages, 'resposta', 'respostas')} de IA por dia</> : <><X size={16}/>Sem recursos de IA</>}</li>
           </ul>
+          <p className="pub-plan-includes">{i === 0 ? 'Inclui' : added(i).length ? `Tudo do ${plans[i - 1].name}, mais` : `Todos os recursos do ${plans[i - 1].name}, com limites maiores`}</p>
+          <ul>{added(i).slice(0, 8).map(k => <li key={k}><Check size={16}/>{feature(k)?.name}<FeatureBadge status={feature(k)?.status ?? 'disponivel'}/></li>)}
+            {added(i).length > 8 && <li className="pub-plan-more">+ {added(i).length - 8} recursos na comparação</li>}</ul>
+          {!enterprise && <small className="pub-plan-note">Você confere o contrato e o resumo antes de qualquer cobrança.</small>}
         </article>;
       })}
     </div>
-    {!state.plans.length && <Empty text="Planos ainda não cadastrados."/>}
-    {!compact && state.plans.length > 0 && <div className="pub-compare">
+    {!plans.length && <Empty text="Planos ainda não cadastrados."/>}
+    {!compact && plans.length > 0 && <div className="pub-compare">
       <div className="pub-section-heading">
         <span className="pub-eyebrow">COMPARAÇÃO COMPLETA</span>
-        <h3>Compare os limites e recursos</h3>
-        <p>Cada plano inclui filiais, controle de catálogo e permissões por perfil sem surpresas.</p>
+        <h2>Compare recursos e limites</h2>
+        <p>Recursos marcados com “Requer configuração” dependem de você conectar o serviço (ex.: número de WhatsApp). “Em homologação” ainda não está liberado para uso.</p>
       </div>
-      <div className="table-wrap">
+      <div className="pub-compare-pick" role="group" aria-label="Planos comparados no celular">
+        {[0, 1].map(slot => <label key={slot}><span>Plano {slot + 1}</span><select value={compare[slot]} onChange={e => setCompare(c => slot === 0 ? [e.target.value, c[1]] : [c[0], e.target.value])}>{plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>)}
+      </div>
+      <div className="table-wrap pub-compare-table">
         <table>
-          <caption>Limites e recursos por plano SaaS</caption>
-          <thead><tr><th scope="col">Recurso</th>{state.plans.map(p => <th scope="col" key={p.id}>{p.name}</th>)}</tr></thead>
+          <caption>Recursos e limites por plano (dados do catálogo oficial)</caption>
+          <thead><tr><th scope="col">Recurso</th>{plans.map(p => <th scope="col" key={p.id} data-plan={p.id} className={compare.includes(p.id) ? 'is-picked' : ''}>{p.name}</th>)}</tr></thead>
           <tbody>
-            {(['users', 'branches', 'products', 'whatsapp'] as const).map((key, index) => <tr key={key}>
-              <th scope="row">{['Usuários', 'Filiais', 'Produtos no catálogo', 'Instâncias WhatsApp'][index]}</th>
-              {state.plans.map(p => <td key={p.id}>{key === 'products' ? p[key].toLocaleString('pt-BR') : p[key]}</td>)}
-            </tr>)}
-            <tr><th scope="row">Teste grátis</th>{state.plans.map(p => <td key={p.id}>{trialLabel(p.trialMonths ?? 1)}</td>)}</tr>
-            {Array.from(new Set(state.plans.flatMap(p => p.features))).map(feature => <tr key={feature}>
-              <th scope="row">{feature}</th>
-              {state.plans.map(p => <td key={p.id}>{p.features.includes(feature) ? 'Incluído' : '—'}</td>)}
-            </tr>)}
+            <tr className="pub-compare-group"><th scope="rowgroup" colSpan={5}>Limites</th></tr>
+            {([['Usuários', 'users'], ['Filiais', 'branches'], ['Produtos no catálogo', 'products'], ['Números de WhatsApp', 'whatsapp'], ['Respostas de IA por dia', 'aiMessages']] as const).map(([label, key]) => <tr key={key}>
+              <th scope="row">{label}</th>{plans.map(p => <td key={p.id} className={compare.includes(p.id) ? 'is-picked' : ''}>{p[key] ? p[key].toLocaleString('pt-BR') : '—'}</td>)}</tr>)}
+            <tr><th scope="row">Teste grátis</th>{plans.map(p => <td key={p.id} className={compare.includes(p.id) ? 'is-picked' : ''}>{trialLabel(p.trialMonths ?? 1)}</td>)}</tr>
+            {CATEGORIES.map(cat => <Fragment key={cat}>
+              <tr className="pub-compare-group"><th scope="rowgroup" colSpan={5}>{cat}</th></tr>
+              {catalog.features.filter(f => f.category === cat).map(f => <tr key={f.key}>
+                <th scope="row">{f.name}<FeatureBadge status={f.status}/></th>
+                {plans.map(p => <td key={p.id} className={compare.includes(p.id) ? 'is-picked' : ''}>{p.features.includes(f.key) ? <><Check size={16} aria-hidden="true"/><span className="sr-only">Incluído</span></> : <span aria-label="Não incluído">—</span>}</td>)}
+              </tr>)}
+            </Fragment>)}
           </tbody>
         </table>
       </div>
+      <p className="pub-compare-note">Não há armazenamento, IA ou WhatsApp ilimitados: os limites acima são aplicados pelo servidor. Mudanças de plano preservam os dados da empresa.</p>
     </div>}
   </section>;
 }
@@ -332,108 +356,121 @@ function Legal({ privacy }: { privacy: boolean }) {
   </section>;
 }
 
+function PlanTag({ catalog, featureKey }: { catalog: ReturnType<typeof useCatalog>; featureKey: string }) {
+  const first = catalog.plans.find(p => p.features.includes(featureKey)); const f = catalog.features.find(x => x.key === featureKey);
+  return <span className="pub-plan-tag">{first ? `A partir do ${first.name}` : 'Sob consulta'}{f && f.status !== 'disponivel' && ` · ${STATUS_LABEL[f.status]}`}</span>;
+}
+
 function Marketing({ path }: { path: string }) {
-  const segment = path === '/oficinas' ? 'oficina' : path === '/motopecas' ? 'loja de motopeças' : path === '/autopecas' ? 'loja de autopeças' : '';
+  const catalog = useCatalog();
+  const segment = SEGMENTS.find(s => s.path === path);
+  const [active, setActive] = useState(0); const item = NEXT_SHOWCASE[active];
   return <>
     <section className="pub-hero">
       <div className="pub-hero-copy">
-        <div className="pub-hero-brand"><img src="/brand/logo-horizontal.webp" alt="PISTEC Gestão Automotiva" width="220" height="62"/></div>
-        <span className="pub-eyebrow"><span className="pub-status-dot"/> GESTÃO AUTOMOTIVA INTEGRADA</span>
-        <h1>{segment ? <>Sua {segment},<br/>um passo <em>à frente.</em></> : <>Menos improviso.<br/>Mais controle.<br/><em>Seu negócio à frente.</em></>}</h1>
-        <p>Vendas no balcão, controle de filiais, ordens de serviço, peças e financeiro. Plataforma com sua própria marca visual e visão completa do faturamento.</p>
-        <p className="pub-trial-offer"><strong>Experimente o PISTEC grátis por 1 mês.</strong> Conheça os recursos do seu plano e descubra como simplificar a gestão da sua oficina ou loja. Sem cartão de crédito no cadastro.</p>
+        <span className="pub-eyebrow"><span className="pub-status-dot"/> GESTÃO AUTOMOTIVA INTELIGENTE</span>
+        <h1>{segment ? <>{segment.title}<br/><em>com gestão de verdade.</em></> : <>Sua oficina mais inteligente.<br/><em>Seu negócio sob controle.</em></>}</h1>
+        <p>{segment ? segment.text : 'Vendas, estoque, ordens de serviço, clientes e financeiro em um só lugar. Ferramentas inteligentes apontam o que precisa de atenção, e a sua equipe decide.'}</p>
         <div className="pub-actions">
           <Link className="pub-button" to="/planos">Começar meu mês grátis<ArrowRight size={18}/></Link>
           <Link className="pub-button pub-button-outline" to="/demonstracao">Ver demonstração</Link>
-          <Link className="pub-button pub-button-outline" to="/planos">Conhecer planos</Link>
         </div>
-        <div className="pub-hero-proof">
-          <span><Check size={15}/>Multiempresa com filiais</span>
-          <span><Check size={15}/>Marca branca (suas cores e logo)</span>
-          <span><Check size={15}/>Sem cartão na demonstração</span>
-        </div>
+        <p className="pub-trial-offer">1 mês calendário grátis para empresas novas. Sem cartão no cadastro.</p>
+        <ul className="pub-hero-proof" aria-label="Destaques">
+          {['Gestão completa', 'AutoPilot e IA que auxiliam', 'Aprovação pelo celular', 'Computador, tablet e celular', 'Sua marca no sistema'].map(t => <li key={t}><Check size={15}/>{t}</li>)}
+        </ul>
       </div>
       <div className="pub-hero-visual">
         <div className="pub-orbit"/>
         <div className="pub-hero-combo">
           <Screenshot name="dashboard" title="Dashboard" hero/>
-          <div className="pub-phone-frame" aria-hidden="true">
-            <div className="pub-phone-notch"/>
-            <div className="pub-phone-screen">
-              <img src="/screenshots/dashboard-mobile.webp" alt="Visão móvel do dashboard" width="780" height="1688" loading="eager"/>
-            </div>
-          </div>
-        </div>
-        <div className="pub-floating-label">
-          <ShieldCheck size={24}/>
-          <div><strong>Uma visão. Toda a operação.</strong><small>Do balcão e da oficina até os indicadores consolidados.</small></div>
+          <div className="pub-phone-frame" aria-hidden="true"><div className="pub-phone-notch"/><div className="pub-phone-screen"><img src="/screenshots/portal-orcamento.webp" alt="" width="601" height="2000" loading="eager"/></div></div>
         </div>
       </div>
     </section>
 
-    <section className="pub-segments" aria-label="Segmentos de atuação">
-      <span>SEGMENTOS ATENDIDOS</span>
-      <Link to="/oficinas"><Wrench size={20}/>Oficinas mecânicas</Link>
-      <Link to="/motopecas"><Zap size={20}/>Motopeças</Link>
-      <Link to="/autopecas"><Package size={20}/>Autopeças e centros automotivos</Link>
-    </section>
-
-    <section className="pub-section">
-      <div className="pub-section-heading">
-        <span className="pub-eyebrow">DIFERENCIAIS DA PLATAFORMA</span>
-        <h2>Construído para a rotina automotiva real.</h2>
-        <p>Desenvolvido para operações com matriz e filiais, balcão dinâmico e gestão visual orientada a resultados.</p>
-      </div>
-      <div className="pub-benefits">
-        <article><span>01 · FILIAIS</span><h3>Multi-filiais com estoque próprio</h3><p>Cadastre matriz e filiais, consulte disponibilidade entre unidades e realize transferências sem planilhas paralelas.</p></article>
-        <article><span>02 · MARCA PRÓPRIA</span><h3>Personalização visual completa</h3><p>Sua logo, suas cores primárias e temas claro ou escuro em cada empresa cliente. A experiência do seu cliente com a sua marca.</p></article>
-        <article><span>03 · ORDEM DE SERVIÇO</span><h3>Do diagnóstico à entrega</h3><p>Orçamentos, peças reservadas, apontamento de mecânico, checklist e histórico de veículos com rastreabilidade total.</p></article>
-        <article><span>04 · ROADMAP</span><div className="pub-roadmap-tag">Item de roadmap</div><h3>Acesso em nuvem corporativo</h3><p>A sincronização em nuvem e a redundância de servidores estão planejadas para a ativação do backend operacional.</p></article>
+    <section className="pub-section" aria-labelledby="para-quem">
+      <div className="pub-section-heading"><span className="pub-eyebrow">PARA QUEM É O PISTEC</span><h2 id="para-quem">Um sistema. Do balcão à oficina.</h2>
+        <p>Loja e oficina na mesma empresa, com o mesmo cadastro de clientes, peças e financeiro. Você usa os módulos que fazem sentido para a sua operação.</p></div>
+      <div className="pub-segment-grid">{SEGMENTS.map(s => <article key={s.path} className={segment?.path === s.path ? 'is-active' : ''}>
+        <h3>{s.title}</h3><p>{s.text}</p>
+        <ul>{s.keys.map(k => <li key={k}><Check size={15}/>{catalog.features.find(f => f.key === k)?.name}</li>)}</ul>
+        <Link to={s.path}>Ver solução para {s.title.toLowerCase()}<ChevronRight size={16}/></Link>
+      </article>)}
+        <article className="pub-segment-mixed"><h3>Loja e oficina juntas</h3><p>Venda no PDV, abra a OS com as mesmas peças e acompanhe tudo no mesmo financeiro. Sem dois sistemas, sem redigitar.</p><Link to="/planos">Comparar planos<ChevronRight size={16}/></Link></article>
       </div>
     </section>
 
-    <section className="pub-section">
-      <div className="pub-section-heading">
-        <span className="pub-eyebrow">DORES RESOLVIDAS</span>
-        <h2>Problemas comuns.<br/>Soluções integradas.</h2>
+    <section className="pub-section pub-next" aria-labelledby="next">
+      <div className="pub-section-heading"><span className="pub-eyebrow">PISTEC NEXT</span><h2 id="next">Conheça a nova geração de gestão automotiva.</h2>
+        <p>Do atendimento à entrega, o PISTEC conecta as atividades da sua empresa e ajuda sua equipe a trabalhar com mais organização.</p></div>
+      <div className="pub-next-layout">
+        <div className="pub-next-tabs" role="tablist" aria-label="Diferenciais PISTEC NEXT">
+          {NEXT_SHOWCASE.map((s, i) => <button key={s.key} role="tab" id={`next-tab-${s.key}`} aria-selected={i === active} aria-controls="next-panel" tabIndex={i === active ? 0 : -1} onClick={() => setActive(i)}
+            onKeyDown={e => { if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); setActive((active + 1) % NEXT_SHOWCASE.length); } if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); setActive((active + NEXT_SHOWCASE.length - 1) % NEXT_SHOWCASE.length); } }}>
+            <span>{String(i + 1).padStart(2, '0')}</span>{s.title}</button>)}
+        </div>
+        <div className="pub-next-panel" role="tabpanel" id="next-panel" aria-labelledby={`next-tab-${item.key}`}>
+          <PlanTag catalog={catalog} featureKey={item.key}/>
+          <h3>{item.benefit}</h3>
+          <p>{item.text}</p>
+          <ol className="pub-mini-flow">{item.flow.map(step => <li key={step}>{step}</li>)}</ol>
+          <Screenshot key={item.key} name={item.shot} title={item.title}/>
+        </div>
       </div>
-      <div className="pub-benefits">{[
-        ['Estoque por filial', 'Saldo por unidade, ponto de pedido, curva de giro e transferências rastreáveis.'],
-        ['Ordens de serviço rastreáveis', 'Etapas, veículos, mecânicos responsáveis e peças consumidas em um só lugar.'],
-        ['Vendas ágeis no PDV', 'Balcão rápido com múltiplos meios de pagamento, troco calculado e baixa automática de estoque.'],
-        ['Visão financeira SaaS e de loja', 'Receitas, despesas, contas a pagar/receber e margem por ordem de serviço.'],
-        ['Busca rápida de peças', 'Localização por SKU, código de barras, aplicação por veículo e referência cruzada.'],
-        ['CRM e histórico de clientes', 'Histórico completo de atendimentos, veículos da frota e consentimento para contato.'],
-        ['Compras estruturadas', 'Pedidos de compra baseados no giro real e sugestão de reposição para evitar ruptura.'],
-        ['Busca unificada (Ctrl K)', 'Acesse produtos, clientes, veículos e ordens de serviço com um único comando.'],
-      ].map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, '0')}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
     </section>
 
-    <section className="pub-section pub-split">
+    <section className="pub-section" aria-labelledby="jornada">
+      <div className="pub-section-heading"><span className="pub-eyebrow">JORNADA COMPLETA</span><h2 id="jornada">Do primeiro atendimento à próxima revisão.</h2>
+        <p>Cada etapa usa os dados da anterior. Exemplo ilustrativo de um atendimento de oficina.</p></div>
+      <ol className="pub-journey">{JOURNEY.map((step, i) => <li key={step}><span>{i + 1}</span>{step}</li>)}</ol>
+    </section>
+
+    <section className="pub-section pub-split" aria-labelledby="ia">
       <div>
-        <span className="pub-eyebrow">ATENDIMENTO AO CLIENTE</span>
-        <h2>WhatsApp no contexto da ordem de serviço.</h2>
-        <p>Notifique clientes sobre orçamentos aprovados, veículos prontos e lembretes de revisão. A integração demonstrativa simula o fluxo sem disparar mensagens reais para celulares.</p>
-        <div className="pub-actions"><Link to="/cadastro" className="pub-button">Experimentar na prática<ArrowRight size={16}/></Link></div>
+        <span className="pub-eyebrow">INTELIGÊNCIA ARTIFICIAL</span>
+        <h2 id="ia">Inteligência que trabalha com você.</h2>
+        <ul className="pub-checklist">
+          <li><Check size={16}/><span><strong>AutoPilot:</strong> regras da sua empresa apontam atrasos, faltas e pendências.</span></li>
+          <li><Check size={16}/><span><strong>Mecânico IA:</strong> fala vira apontamento organizado para revisão.</span></li>
+          <li><Check size={16}/><span><strong>Assistente:</strong> perguntas sobre estoque, OS e vendas, somente leitura.</span></li>
+        </ul>
+        <p className="pub-callout">A IA auxilia; o profissional decide. Operações de estoque, valores e compras sempre pedem confirmação, e a IA não substitui avaliação técnica. Uso diário limitado por plano.</p>
       </div>
+      <Screenshot name="mecanico" title="Mecânico IA"/>
+    </section>
+
+    <section className="pub-section pub-split" aria-labelledby="whats">
       <Screenshot name="whatsapp" title="WhatsApp"/>
-    </section>
-
-    <section className="pub-section pub-split">
-      <Screenshot name="personalizacao" title="Personalização"/>
       <div>
-        <span className="pub-eyebrow">WHITE LABEL E MULTIEMPRESA</span>
-        <h2>Cada cliente no seu ambiente.<br/>E com a sua marca.</h2>
-        <p>Defina logotipo, paleta de cores primárias, tema e formato de documentos por empresa. As filiais mantêm estoque e caixas segregados para total governança.</p>
+        <span className="pub-eyebrow">ATENDIMENTO DIGITAL</span>
+        <h2 id="whats">WhatsApp da sua loja dentro do PISTEC.</h2>
+        <p>Conecte o número da empresa lendo um QR Code. As conversas ficam organizadas por cliente, com atendimento pela equipe e histórico. Orçamentos e acompanhamento seguem por link seguro.</p>
+        <p className="pub-callout">Requer conectar e manter o seu número ativo. A quantidade de números depende do plano. O atendente automático com IA está em homologação e ainda não é oferecido.</p>
       </div>
     </section>
 
-    <section className="pub-section pub-gallery">
-      <div className="pub-section-heading">
-        <span className="pub-eyebrow">CAPTURAS REAIS DO SISTEMA</span>
-        <h2>Ferramentas completas.<br/>Rotina mais produtiva.</h2>
-        <p>Telas reais da plataforma em alta resolução. Veja como cada módulo foi desenhado para agilizar seu dia a dia.</p>
+    <section className="pub-section pub-split" aria-labelledby="marca">
+      <div>
+        <span className="pub-eyebrow">WHITE LABEL E APP</span>
+        <h2 id="marca">Seu sistema. Sua marca. Em qualquer dispositivo.</h2>
+        <p>Logo, cores e tema da empresa no sistema, nos documentos e no portal do cliente. O PISTEC funciona no navegador do computador, tablet e celular e pode ser instalado como aplicativo (PWA) nos navegadores compatíveis. A identidade visual da sua empresa acompanha a experiência do aplicativo.</p>
+        <p className="pub-small">Não é distribuído pela App Store ou Google Play.</p>
       </div>
+      <Screenshot name="personalizacao" title="Personalização"/>
+    </section>
+
+    <section className="pub-section" aria-labelledby="beneficios">
+      <div className="pub-section-heading"><span className="pub-eyebrow">NA PRÁTICA</span><h2 id="beneficios">Antes e depois de organizar a operação.</h2></div>
+      <div className="pub-before-after">
+        <div><h3>Sem um sistema integrado</h3><ul>{['Informações espalhadas em papel e planilhas', 'Peças sem reserva para a OS', 'Orçamento aprovado por telefone, sem registro', 'Margem de cada serviço desconhecida', 'Cliente esquecido depois da entrega'].map(t => <li key={t}><X size={15}/>{t}</li>)}</ul></div>
+        <div><h3>Com o PISTEC</h3><ul>{['Histórico do cliente e do veículo em um lugar', 'Peças reservadas e baixadas pelas etapas da OS', 'Aprovação por item registrada pelo cliente', 'Margem de contribuição por OS', 'Revisões previstas e lembretes'].map(t => <li key={t}><Check size={15}/>{t}</li>)}</ul></div>
+      </div>
+      <p className="pub-small">Cada operação é diferente; os resultados dependem do uso da ferramenta pela equipe.</p>
+    </section>
+
+    <section className="pub-section pub-gallery" aria-labelledby="telas">
+      <div className="pub-section-heading"><span className="pub-eyebrow">TELAS REAIS</span><h2 id="telas">Veja o sistema por dentro.</h2><p>Capturas da demonstração, com dados fictícios.</p></div>
       <div className="pub-gallery-grid">{modules.map(([slug, title, text]) => <article key={slug}><Screenshot name={slug} title={title}/><h3>{title}</h3><p>{text}</p></article>)}</div>
     </section>
 
@@ -441,12 +478,12 @@ function Marketing({ path }: { path: string }) {
     <FAQ/>
 
     <section className="pub-cta">
-      <img src="/brand/symbol.webp" alt="" width="80" height="80"/>
-      <span className="pub-eyebrow">COMECE HOJE MESMO</span>
-      <h2>Mais tempo para acelerar seu negócio.<br/>Menos tempo perdido com controles manuais.</h2>
+      <img src="/brand/symbol.webp" alt="" width="80" height="80" loading="lazy"/>
+      <span className="pub-eyebrow">COMECE HOJE</span>
+      <h2>Experimente o PISTEC por 1 mês, sem cartão.</h2>
       <div className="pub-actions" style={{ justifyContent: 'center' }}>
         <Link className="pub-button" to="/planos">Começar meu mês grátis<ArrowRight size={18}/></Link>
-        <Link className="pub-button pub-button-outline" to="/demonstracao">Abrir demonstração</Link>
+        <Link className="pub-button pub-button-outline" to="/demonstracao">Ver demonstração</Link>
       </div>
     </section>
   </>;
@@ -456,7 +493,18 @@ export default function Public() {
   const location = useLocation(); const path = location.pathname.replace(/\/+$/, '') || '/'; const [menu, setMenu] = useState(false);
   useEffect(() => {
     setMenu(false);
-    document.title = `PISTEC — ${path === '/' ? 'Gestão Automotiva Inteligente' : ({ '/planos': 'Planos SaaS', '/cadastro': 'Criar empresa', '/login': 'Acesso demonstrativo', '/demonstracao': 'Demonstração', '/contato': 'Contato' }[path] || 'Seu negócio à frente')}`;
+    const segment = SEGMENTS.find(s => s.path === path);
+    document.title = `PISTEC — ${path === '/' ? 'Gestão Automotiva Inteligente' : segment ? `Sistema para ${segment.title.toLowerCase()}` : ({ '/planos': 'Planos e preços', '/funcionalidades': 'Funcionalidades', '/cadastro': 'Criar empresa', '/login': 'Acesso demonstrativo', '/demonstracao': 'Demonstração', '/contato': 'Contato', '/termos': 'Termos de uso', '/privacidade': 'Privacidade', '/licenca-perpetua': 'Licença perpétua' }[path] || 'Seu negócio à frente')}`;
+    // SPA: meta por rota para buscadores que executam JS; cadastro/login/contrato ficam fora do índice.
+    const meta = (sel: string, attr: string, value: string) => document.head.querySelector(sel)?.setAttribute(attr, value);
+    meta('link[rel=canonical]', 'href', `https://pistec.com.br${path === '/' ? '/' : path}`);
+    meta('meta[property="og:url"]', 'content', `https://pistec.com.br${path === '/' ? '/' : path}`);
+    meta('meta[property="og:title"]', 'content', document.title);
+    meta('meta[name=description]', 'content', segment ? `PISTEC para ${segment.title.toLowerCase()}: ${segment.text}` : path === '/planos' ? 'Planos Essencial, Profissional, Premium e Enterprise com 1 mês grátis. Compare recursos, limites e valores por período.'
+      : 'Sistema de gestão para oficinas mecânicas, oficinas de motos, motopeças e autopeças: PDV, estoque, ordens de serviço, orçamentos, clientes e financeiro. 1 mês grátis.');
+    let robots = document.head.querySelector('meta[name=robots]');
+    if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name', 'robots'); document.head.append(robots); }
+    robots.setAttribute('content', ['/cadastro', '/login', '/contrato', '/recuperar-acesso'].includes(path) ? 'noindex, follow' : 'index, follow');
     window.scrollTo(0, 0);
   }, [path]);
 
@@ -485,7 +533,7 @@ export default function Public() {
     </div>
     <LeadForm/>
   </section>;
-  else if (['/', '/funcionalidades', '/oficinas', '/motopecas', '/autopecas'].includes(path)) content = <Marketing path={path}/>;
+  else if (['/', '/funcionalidades', '/oficinas', '/oficinas-de-motos', '/motopecas', '/autopecas'].includes(path)) content = <Marketing path={path}/>;
   else content = <section className="pub-section"><h1>Página não encontrada.</h1><Link className="pub-button" to="/">Voltar ao início</Link></section>;
 
   return <div className="public-site">
@@ -498,7 +546,7 @@ export default function Public() {
         {menu ? <X/> : <Menu/>}
       </button>
       <nav id="public-nav" className={menu ? 'is-open' : ''} aria-label="Navegação principal">
-        {[['/funcionalidades', 'Funcionalidades'], ['/oficinas', 'Oficinas'], ['/motopecas', 'Motopeças'], ['/autopecas', 'Autopeças'], ['/planos', 'Planos'], ['/contato', 'Contato']].map(([href, title]) => <Link aria-current={path === href ? 'page' : undefined} to={href} key={href}>{title}</Link>)}
+        {[['/funcionalidades', 'Funcionalidades'], ['/oficinas', 'Oficinas'], ['/oficinas-de-motos', 'Motos'], ['/motopecas', 'Motopeças'], ['/autopecas', 'Autopeças'], ['/planos', 'Planos'], ['/contato', 'Contato']].map(([href, title]) => <Link aria-current={path === href ? 'page' : undefined} to={href} key={href}>{title}</Link>)}
         <Link to="/login" className="pub-login">Entrar</Link>
         <Link className="pub-button pub-button-small" to="/demonstracao">Ver demonstração<ArrowRight size={15}/></Link>
       </nav>
@@ -508,10 +556,10 @@ export default function Public() {
       <div>
         <Link to="/" className="pub-brand"><img src="/brand/logo-horizontal.webp" alt="PISTEC" width="170" height="48"/></Link>
         <p>Tecnologia e controle para quem mantém o mercado automotivo em movimento.</p>
-        <small>Protótipo de demonstração local · Dados persistidos no navegador · Sem pagamentos reais</small>
+        <small>Gestão automotiva em nuvem. A demonstração usa dados fictícios no seu navegador.</small>
       </div>
       <div><h3>Produto</h3><Link to="/funcionalidades">Funcionalidades</Link><Link to="/planos">Planos SaaS</Link><Link to="/licenca-perpetua">Licença perpétua</Link><Link to="/demonstracao">Demonstração</Link></div>
-      <div><h3>Soluções</h3><Link to="/oficinas">Oficinas mecânicas</Link><Link to="/motopecas">Motopeças</Link><Link to="/autopecas">Autopeças</Link><Link to="/cadastro">Criar empresa</Link></div>
+      <div><h3>Soluções</h3><Link to="/oficinas">Oficinas mecânicas</Link><Link to="/oficinas-de-motos">Oficinas de motos</Link><Link to="/motopecas">Motopeças</Link><Link to="/autopecas">Autopeças</Link><Link to="/cadastro">Criar empresa</Link></div>
       <div><h3>Transparência</h3><Link to="/contato">Contato comercial</Link><Link to="/termos">Termos de uso</Link><Link to="/privacidade">Privacidade</Link></div>
       <div className="pub-footer-bottom">
         <span>© {new Date().getFullYear()} PISTEC Gestão Automotiva. Todos os direitos reservados.</span>

@@ -39,6 +39,16 @@ test('o contrato congela exatamente o plano, a periodicidade, o preço e os limi
   }
 });
 
+test('contratação e Anexo I usam os mesmos recursos do catálogo da landing', async () => {
+  const pub = await rpc<{ plans: { id: string; features: string[] }[]; features: { key: string; name: string }[] }>(null, 'plan_catalog', []);
+  const hire = await rpc<{ plans: { id: string; features: string[] }[] }>(null, 'contract_catalog', []);
+  const names = (id: string) => pub.plans.find(p => p.id === id)!.features.map(k => pub.features.find(f => f.key === k)!.name);
+  for (const p of hire.plans) expect(p.features).toEqual(names(p.id));
+  const r = await rpc<{ id: string }>(owner, 'prepare_contract', [A.tenant, form('essencial', 'monthly')]);
+  const d = await rpc<{ commercial: { entitlements: { features: string[] } } }>(owner, 'contract_detail', [r.id]);
+  expect(d.commercial.entitlements.features).toEqual(names('essencial'));
+});
+
 test('Enterprise não gera contrato de autoatendimento (nem em homologação o banco aceita plano sob proposta como real)', async () => {
   const r = await rpc<{ id: string }>(owner, 'prepare_contract', [A.tenant, form('enterprise', 'monthly')]);
   expect(r.id).toBeTruthy(); // sandbox é permitido para homologar o texto

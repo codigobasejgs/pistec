@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /loja/
+Disallow: /admin
+Disallow: /c/
+Disallow: /d/
+
+Sitemap: https://pistec.com.br/sitemap.xml
